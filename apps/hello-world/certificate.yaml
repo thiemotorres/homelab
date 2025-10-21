@@ -1,0 +1,13 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: hello-world-cert
+  namespace: hello-world
+spec:
+  secretName: hello-world-tls
+  issuerRef:
+    name: letsencrypt-staging  # Erst testen, dann auf letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - hello.thiemo.click

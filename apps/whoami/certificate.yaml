@@ -1,0 +1,13 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: whoami-cert
+  namespace: whoami
+spec:
+  secretName: whoami-tls
+  issuerRef:
+    name: letsencrypt-staging  # Erst testen, dann auf letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - whoami.feto.dev

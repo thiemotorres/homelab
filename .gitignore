@@ -1,0 +1,17 @@
+# Secrets - NIEMALS committen!
+secrets/*-credentials.yaml
+secrets/*.secret.yaml
+secrets/age.key
+secrets/*.key
+
+# Ausnahme: README darf commited werden
+!secrets/README.md
+
+# Temporäre Dateien
+*.tmp
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
