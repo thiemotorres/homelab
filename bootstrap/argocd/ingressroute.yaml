@@ -1,0 +1,31 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`argocd.feto.dev`)  # ÄNDERN: Deine Domain
+      priority: 10
+      services:
+        - name: argocd-server
+          port: 80
+  tls:
+    secretName: argocd-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: argocd-cert
+  namespace: argocd
+spec:
+  secretName: argocd-tls
+  issuerRef:
+    name: letsencrypt-staging  # Später auf letsencrypt-prod ändern
+    kind: ClusterIssuer
+  dnsNames:
+    - argocd.feto.dev  # ÄNDERN: Deine Domain

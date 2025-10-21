@@ -1,0 +1,33 @@
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: info@thiemo-torres.dem  # ÄNDERN: Deine E-Mail
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+      # Cloudflare DNS für feto.dev (local services)
+      - selector:
+          dnsZones:
+            - "feto.dev"
+        dns01:
+          cloudflare:
+            email: your-cloudflare-email@example.com  # ÄNDERN: Deine Cloudflare E-Mail
+            apiTokenSecretRef:
+              name: cloudflare-api-token-feto
+              key: api-token
+
+      # Cloudflare DNS für thiemo.click (internet-facing services)
+      - selector:
+          dnsZones:
+            - "thiemo.click"
+        dns01:
+          cloudflare:
+            email: your-cloudflare-email@example.com  # ÄNDERN: Deine Cloudflare E-Mail
+            apiTokenSecretRef:
+              name: cloudflare-api-token-thiemo
+              key: api-token

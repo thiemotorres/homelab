@@ -1,0 +1,21 @@
+sealed-secrets:
+  # Namespace für den Controller
+  namespace: kube-system
+
+  # Resources
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  # Metrics für Prometheus (optional)
+  metrics:
+    enabled: true
+
+  # Service Account
+  serviceAccount:
+    create: true
+    name: sealed-secrets-controller

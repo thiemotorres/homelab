@@ -1,0 +1,11 @@
+# Sealed Secrets für Cloudflare API Tokens
+#
+# Diese Datei ist ein Platzhalter. Die eigentlichen SealedSecret-Manifeste
+# werden nach dem Setup hier abgelegt.
+#
+# Workflow:
+# 1. Sealed Secrets Controller deployen
+# 2. Public Key abrufen: kubeseal --fetch-cert > pub-cert.pem
+# 3. Secrets verschlüsseln (siehe secrets/README.md)
+# 4. SealedSecret-Manifeste hier ablegen
+# 5. In kustomization.yaml einbinden
