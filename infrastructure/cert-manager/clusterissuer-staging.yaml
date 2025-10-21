@@ -6,7 +6,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: info@thiemo-torres.dem  # ÄNDERN: Deine E-Mail
+    email: info@thiemo-torres.de
     privateKeySecretRef:
       name: letsencrypt-staging
     solvers:
