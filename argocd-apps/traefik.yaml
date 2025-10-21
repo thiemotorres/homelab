@@ -1,0 +1,63 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    chart: traefik
+    repoURL: https://traefik.github.io/charts
+    targetRevision: 32.2.0
+    helm:
+      releaseName: traefik
+      values: |
+        ports:
+          web:
+            port: 80
+            exposedPort: 80
+          websecure:
+            port: 443
+            exposedPort: 443
+            tls:
+              enabled: true
+
+        ingressRoute:
+          dashboard:
+            enabled: false  # Auf true setzen für Traefik Dashboard
+
+        logs:
+          general:
+            level: INFO
+          access:
+            enabled: true
+
+        additionalArguments:
+          - "--api.dashboard=true"
+          - "--ping=true"
+
+        service:
+          type: LoadBalancer  # Oder NodePort wenn kein MetalLB
+
+        deployment:
+          kind: DaemonSet  # Für K3s oft besser als Deployment
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false  # kube-system existiert bereits
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        maxDuration: 3m0s
+        factor: 2
