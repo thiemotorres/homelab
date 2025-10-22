@@ -7,7 +7,7 @@ metadata:
 spec:
   secretName: whoami-tls
   issuerRef:
-    name: letsencrypt-staging  # Erst testen, dann auf letsencrypt-prod
+    name: letsencrypt-prod
     kind: ClusterIssuer
   dnsNames:
     - whoami.feto.dev
