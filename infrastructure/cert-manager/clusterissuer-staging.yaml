@@ -16,7 +16,6 @@ spec:
             - "feto.dev"
         dns01:
           cloudflare:
-            email: your-cloudflare-email@example.com  # ÄNDERN: Deine Cloudflare E-Mail
             apiTokenSecretRef:
               name: cloudflare-api-token-feto
               key: api-token
@@ -27,7 +26,6 @@ spec:
             - "thiemo.click"
         dns01:
           cloudflare:
-            email: your-cloudflare-email@example.com  # ÄNDERN: Deine Cloudflare E-Mail
             apiTokenSecretRef:
               name: cloudflare-api-token-thiemo
               key: api-token
