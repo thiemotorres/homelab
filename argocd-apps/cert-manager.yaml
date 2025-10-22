@@ -21,6 +21,12 @@ spec:
           leaderElection:
             namespace: cert-manager
 
+        # Configure DNS servers for DNS-01 challenge validation
+        # This bypasses local DNS overrides (e.g., OPNsense) and queries public DNS directly
+        extraArgs:
+          - --dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53
+          - --dns01-recursive-nameservers-only=true
+
         prometheus:
           enabled: true
 
