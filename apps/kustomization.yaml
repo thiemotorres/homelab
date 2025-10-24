@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - whoami       # feto.dev (local)
   - hello-world  # thiemo.click (internet-facing)
+  - gork         # gork.thiemo.click

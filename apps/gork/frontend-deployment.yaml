@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gork-frontend
+  namespace: gork
+  labels:
+    app: gork-frontend
+    app.kubernetes.io/name: gork-frontend
+    app.kubernetes.io/part-of: gork-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gork-frontend
+  template:
+    metadata:
+      labels:
+        app: gork-frontend
+    spec:
+      containers:
+      - name: gork-frontend
+        image: thiemotorres/gork-frontend:1.0.0
+        ports:
+        - containerPort: 3000
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
