@@ -23,7 +23,7 @@ spec:
         command: ['sh', '-c']
         args:
         - |
-          until pg_isready -h postgres-service.gork.svc.cluster.local -p 5432 -U $POSTGRES_USER; do
+          until pg_isready -h postgres-service.infrastructure.svc.cluster.local -p 5432 -U $POSTGRES_USER; do
             echo "Waiting for PostgreSQL to be ready..."
             sleep 2
           done

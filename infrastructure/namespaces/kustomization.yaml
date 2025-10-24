@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - cert-manager.yaml
   - external-services.yaml
+  - infrastructure.yaml
