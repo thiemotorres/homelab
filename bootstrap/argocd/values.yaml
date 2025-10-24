@@ -17,6 +17,21 @@ argo-cd:
       server.insecure: true
 
     cm:
+      # Keep default exclusions but allow manual Endpoints in external-services namespace
+      resource.exclusions: |
+        - apiGroups:
+          - "*"
+          kinds:
+          - ProviderConfigUsage
+          clusters:
+          - "*"
+        - apiGroups:
+          - ""
+          kinds:
+          - Event
+          clusters:
+          - "*"
+
       # Automatisches Repository Discovery
       resource.customizations.health.argoproj.io_Application: |
         hs = {}
