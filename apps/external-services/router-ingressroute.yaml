@@ -1,0 +1,47 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: router
+  namespace: external-services
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`router.feto.dev`)
+      kind: Rule
+      services:
+        - name: router-service
+          port: 440
+          scheme: http  # Router speaks plain HTTP on port 440
+      middlewares:
+        - name: router-headers
+          namespace: external-services
+  tls:
+    secretName: router-tls
+---
+# Middleware for setting proper headers
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: router-headers
+  namespace: external-services
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+      X-Forwarded-For: ""
+    customResponseHeaders:
+      X-Frame-Options: "SAMEORIGIN"
+      X-Content-Type-Options: "nosniff"
+---
+# Middleware for HTTPS redirect
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-to-https
+  namespace: external-services
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true

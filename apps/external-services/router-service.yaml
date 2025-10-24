@@ -1,0 +1,31 @@
+---
+# Router Service (ClusterIP with Endpoints for external IP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: router-service
+  namespace: external-services
+  labels:
+    app: router
+    app.kubernetes.io/name: router
+    app.kubernetes.io/part-of: homelab-external
+spec:
+  type: ClusterIP
+  ports:
+  - port: 440     # Router's HTTP port (router serves plain HTTP on 440)
+    targetPort: 440
+    protocol: TCP
+    name: http
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: router-service
+  namespace: external-services
+subsets:
+- addresses:
+  - ip: 192.168.92.1  # Your router IP
+  ports:
+  - port: 440     # Router's actual HTTP port
+    name: http
+    protocol: TCP

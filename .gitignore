@@ -16,3 +16,4 @@ secrets/*.key
 .DS_Store
 Thumbs.db
 migrate_database.sh
+apps/external-services/TEMPLATE.yaml
