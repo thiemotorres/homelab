@@ -9,5 +9,5 @@ resources:
   - service.yaml
   - certificate.yaml
   - ingressroute.yaml
-  - gork-jwt-secret-sealed.yaml
-  - database-url-sealed.yaml
+  - sealed-secrets/gork-jwt-secret-sealed.yaml
+  - sealed-secrets/database-url-sealed.yaml
