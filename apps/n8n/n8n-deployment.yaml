@@ -73,9 +73,11 @@ spec:
         - name: N8N_PORT
           value: "5678"
         - name: N8N_PROTOCOL
-          value: "http"
+          value: "https"
         - name: N8N_HOST
-          value: "n8n.thiemo.click"
+          value: "n8n.n8n.svc.cluster.local"
+        - name: WEBHOOK_URL
+          value: "https://n8n.thiemo.click/"
         - name: NODE_ENV
           value: "production"
         - name: GENERIC_TIMEZONE
