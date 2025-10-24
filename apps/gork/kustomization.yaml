@@ -11,3 +11,4 @@ resources:
   - ingressroute.yaml
   - sealed-secrets/gork-jwt-secret-sealed.yaml
   - sealed-secrets/database-url-sealed.yaml
+  - sealed-secrets/postgres-credentials-sealed.yaml

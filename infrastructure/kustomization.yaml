@@ -5,3 +5,4 @@ resources:
   - namespaces
   - cert-manager
   - postgres
+  - sealed-secrets/postgres-credentials-sealed.yaml
