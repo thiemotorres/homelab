@@ -47,15 +47,6 @@ spec:
         volumeMounts:
         - name: n8n-data
           mountPath: /home/node/.n8n
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 5678
-          initialDelaySeconds: 5
-          periodSeconds: 10
-          timeoutSeconds: 5
-          successThreshold: 1
-          failureThreshold: 3
         resources:
           requests:
             memory: "128Mi"
