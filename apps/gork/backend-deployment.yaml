@@ -17,22 +17,6 @@ spec:
       labels:
         app: gork-backend
     spec:
-      initContainers:
-      - name: wait-for-postgres
-        image: postgres:17-alpine
-        command: ['sh', '-c']
-        args:
-        - |
-          until pg_isready -h postgres-service.infrastructure.svc.cluster.local -p 5432 -U $POSTGRES_USER; do
-            echo "Waiting for PostgreSQL to be ready..."
-            sleep 2
-          done
-        env:
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              name: postgres-credentials
-              key: username
       containers:
       - name: gork-backend
         image: thiemotorres/gork-backend:1.0.0
