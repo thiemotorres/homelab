@@ -3,7 +3,6 @@ kind: Kustomization
 namespace: external-services
 
 resources:
-  - namespace.yaml
   - router-service.yaml
   - router-certificate.yaml
   - router-ingressroute.yaml
