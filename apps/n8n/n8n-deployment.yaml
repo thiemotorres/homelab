@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: n8n
+  labels:
+    app: n8n
+    app.kubernetes.io/name: n8n
+    app.kubernetes.io/part-of: n8n-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      volumes:
+      - name: n8n-data
+        persistentVolumeClaim:
+          claimName: n8n-pvc
+      containers:
+      - name: n8n
+        image: docker.n8n.io/n8nio/n8n
+        ports:
+        - containerPort: 5678
+          name: http
+        env:
+        - name: N8N_PORT
+          value: "5678"
+        - name: N8N_PROTOCOL
+          value: "http"
+        - name: N8N_HOST
+          value: "https://n8n.thiemo.click"
+        - name: NODE_ENV
+          value: "production"
+        - name: GENERIC_TIMEZONE
+          value: "Europe/Berlin"
+        - name: TZ
+          value: "Europe/Berlin"
+        - name: N8N_RUNNERS_ENABLED
+          value: "true"
+        - name: N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS
+          value: "true"
+        volumeMounts:
+        - name: n8n-data
+          mountPath: /home/node/.n8n
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5678
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
