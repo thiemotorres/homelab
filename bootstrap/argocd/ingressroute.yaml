@@ -9,7 +9,7 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: Host(`argocd.feto.dev`)  # ÄNDERN: Deine Domain
+      match: Host(`argocd.feto.dev`)
       priority: 10
       services:
         - name: argocd-server
@@ -25,7 +25,7 @@ metadata:
 spec:
   secretName: argocd-tls
   issuerRef:
-    name: letsencrypt-staging  # Später auf letsencrypt-prod ändern
+    name: letsencrypt-prod
     kind: ClusterIssuer
   dnsNames:
-    - argocd.feto.dev  # ÄNDERN: Deine Domain
+    - argocd.feto.dev
