@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: database-url
+  namespace: gork
+spec:
+  encryptedData:
+    database-url: AgA7CMJpcd3cdWqEL4T4SdmS6PguIG2tukP70xxTX+VMHXVEmqMRdC9S1TIIq6imC0JYDjccLPdcy3ebg+lH8C8Op35ScKHHq6PjM64FWonH3qUuqPzmEzZrQloimKsr9kLzwerBJ3UlRB6GOjFYCjh+wRw+yDxxovLd6WgoyzRYnF2e2QZjgUzXdGZhoTaPOMt8V/L4+kI82S76jaAvVMhVdEwFBBRZ45V2GxeSDTVRmIgeMZdVLSulC10gWJcMcERnOoK0r4BR/pFiwjeBamgWnPayriy3YQJJVOZo/nm//BuqveVJHdxBoAfiI6vwiUH+KfB7inMCse8Es2XPet8xHosUDow5RTAgPT+VWmp54o2pktllsCGp8Kj63e87gkqHAuK4FdPnuw47WX/MOtAgVR/izGSjrzfZcbNrHwCw0IWS/0EEZNPfuSzDBHbDl+XckCfrgT9vrkUltujfGKB42DkbT5BySIJt222hlJMIm8x8wDRbrYSwcnJ5zMRGQgwOU03UqUFzV9BgIyjg5ZZU/IBVQNVbXRbh7c4D9OHwS5BrdG0B2Owf+GakHLD6Hdo4E6BpS4E9anaRIDq/Cn9vSxZnThxWNbXAo2SSSg1BhUb15qaE/yijSkxfdKS4TN8nrXhPy7d8iHP0rUaBQtmDgkn0k+uCZsvzncXzTIGcAXiddOq413yHdCcUuRZaSGHc2zt741dlz/JhEvm9AQTelVc5gCsyQk2jBXUgDYdPuVnG/KSRWv/HKwgNlht6n3TzIt6Ez3auN+Yo7mxUkl2cJsuBKHRO4ERBAr97vqJidD3UhlES4HMUdihJvG0f
+  template:
+    metadata:
+      name: database-url
+      namespace: gork
+    type: Opaque

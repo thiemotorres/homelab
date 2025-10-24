@@ -10,3 +10,4 @@ resources:
   - certificate.yaml
   - ingressroute.yaml
   - gork-jwt-secret-sealed.yaml
+  - database-url-sealed.yaml
