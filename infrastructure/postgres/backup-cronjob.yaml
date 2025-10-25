@@ -86,6 +86,10 @@ spec:
               # Trap für Fehler aktivieren
               trap 'send_failure_notification' ERR
 
+              # curl installieren für Discord Webhooks
+              echo "Installing curl..."
+              apk add --no-cache curl
+
               # rclone config für R2 erstellen
               echo "Configuring rclone for Cloudflare R2..."
               mkdir -p /root/.config/rclone
