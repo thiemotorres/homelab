@@ -5,4 +5,6 @@ namespace: infrastructure
 resources:
   - postgres.yaml
   - service.yaml
+  - backup-cronjob.yaml
   - sealed-secrets/postgres-credentials-sealed.yaml
+  - sealed-secrets/r2-backup-credentials-sealed.yaml
