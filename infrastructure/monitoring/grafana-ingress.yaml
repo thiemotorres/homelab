@@ -10,7 +10,7 @@ spec:
     - kind: Rule
       match: Host(`grafana.feto.dev`)
       services:
-        - name: kube-prometheus-stack-grafana
+        - name: monitoring-grafana
           port: 80
   tls:
     secretName: grafana-tls
@@ -28,7 +28,7 @@ spec:
     - kind: Rule
       match: Host(`grafana.feto.dev`)
       services:
-        - name: kube-prometheus-stack-grafana
+        - name: monitoring-grafana
           port: 80
       middlewares:
         - name: redirect-https
