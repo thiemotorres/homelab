@@ -1,0 +1,78 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: postgres-restore-  # Kubernetes generiert automatisch einen eindeutigen Namen
+  namespace: infrastructure
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: restore
+        image: rclone/rclone:1.68
+        command:
+        - /bin/sh
+        args:
+        - -c
+        - |
+          set -e
+          
+          # rclone config
+          mkdir -p /root/.config/rclone
+          cat > /root/.config/rclone/rclone.conf <<EOF
+          [r2]
+          type = s3
+          provider = Cloudflare
+          access_key_id = ${AWS_ACCESS_KEY_ID}
+          secret_access_key = ${AWS_SECRET_ACCESS_KEY}
+          endpoint = ${S3_ENDPOINT}
+          acl = private
+          no_check_bucket = true
+          EOF
+          
+          # Verfügbare Backups auflisten
+          echo "Available backups:"
+          rclone ls r2:${BUCKET_NAME}/ --include "postgres_backup_*.sql.gz"
+          
+          # BACKUP_FILE manuell setzen oder neuestes nehmen
+          BACKUP_FILE="${RESTORE_FILENAME:-$(rclone lsf r2:${BUCKET_NAME}/ --include 'postgres_backup_*.sql.gz' | sort -r | head -n1)}"
+          
+          echo "Downloading backup: $BACKUP_FILE"
+          rclone copy r2:${BUCKET_NAME}/$BACKUP_FILE /restore/
+          
+          echo "Installing PostgreSQL client..."
+          apk add --no-cache postgresql-client
+          
+          echo "Restoring database..."
+          gunzip -c /restore/$BACKUP_FILE | \
+            PGPASSWORD=$POSTGRES_PASSWORD psql \
+              -h $POSTGRES_HOST \
+              -U $POSTGRES_USER \
+              -d postgres
+          
+          echo "Restore completed successfully!"
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: POSTGRES_HOST
+          value: "postgres-service.infrastructure.svc.cluster.local"
+        # Optional: Spezifisches Backup wiederherstellen
+        # - name: RESTORE_FILENAME
+        #   value: "postgres_backup_20250125_020000.sql.gz"
+        envFrom:
+        - secretRef:
+            name: r2-backup-credentials
+        volumeMounts:
+        - name: restore-storage
+          mountPath: /restore
+      volumes:
+      - name: restore-storage
+        emptyDir: {}

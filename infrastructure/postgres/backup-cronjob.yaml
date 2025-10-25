@@ -90,7 +90,8 @@ spec:
               rclone copy /backup/$BACKUP_FILE r2:${BUCKET_NAME}/ \
                 --progress \
                 --stats 10s \
-                --transfers 4
+                --transfers 4 \
+                --s3-no-check-bucket
               
               echo "Upload successful!"
               

@@ -1,0 +1,114 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-backup-test
+  namespace: infrastructure
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure          
+      initContainers:
+      - name: postgres-dump
+        image: postgres:17-alpine
+        command:
+        - /bin/sh
+        args:
+        - -c
+        - |
+          set -e
+          echo "Starting PostgreSQL backup..."
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          BACKUP_FILE="postgres_backup_${TIMESTAMP}.sql.gz"
+          
+          echo "Creating dump: $BACKUP_FILE"
+          PGPASSWORD=$POSTGRES_PASSWORD pg_dumpall \
+            -h $POSTGRES_HOST \
+            -U $POSTGRES_USER \
+            | gzip > /backup/$BACKUP_FILE
+          
+          # Backup-Größe ausgeben
+          BACKUP_SIZE=$(du -h /backup/$BACKUP_FILE | cut -f1)
+          echo "Backup created successfully: $BACKUP_FILE ($BACKUP_SIZE)"
+          
+          # Filename für nächsten Container speichern
+          echo "$BACKUP_FILE" > /backup/latest_filename.txt
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: POSTGRES_HOST
+          value: "postgres-service.infrastructure.svc.cluster.local"
+        - name: POSTGRES_PORT
+          value: "5432"
+        volumeMounts:
+        - name: backup-storage
+          mountPath: /backup
+      
+      # 2. Main Container: Upload zu R2 mit rclone
+      containers:
+      - name: upload-to-r2
+        image: rclone/rclone:1.68
+        command:
+        - /bin/sh
+        args:
+        - -c
+        - |
+          set -e
+          
+          # rclone config für R2 erstellen
+          echo "Configuring rclone for Cloudflare R2..."
+          mkdir -p /root/.config/rclone
+          cat > /root/.config/rclone/rclone.conf <<EOF
+          [r2]
+          type = s3
+          provider = Cloudflare
+          access_key_id = ${AWS_ACCESS_KEY_ID}
+          secret_access_key = ${AWS_SECRET_ACCESS_KEY}
+          endpoint = ${S3_ENDPOINT}
+          acl = private
+          EOF
+          
+          # Backup-Filename lesen
+          BACKUP_FILE=$(cat /backup/latest_filename.txt)
+          echo "Uploading $BACKUP_FILE to R2..."
+          
+          # Upload zu R2
+          rclone copy /backup/$BACKUP_FILE r2:${BUCKET_NAME}/ \
+            --progress \
+            --stats 10s \
+            --transfers 4 \
+            --s3-no-check-bucket
+          
+          echo "Upload successful!"
+          
+          # Alte Backups löschen (älter als RETENTION_DAYS)
+          echo "Cleaning up old backups (keeping last ${RETENTION_DAYS} days)..."
+          rclone delete r2:${BUCKET_NAME}/ \
+            --min-age ${RETENTION_DAYS}d \
+            --include "postgres_backup_*.sql.gz"
+          
+          # Liste aller Backups anzeigen
+          echo "Current backups in R2:"
+          rclone ls r2:${BUCKET_NAME}/ --include "postgres_backup_*.sql.gz"
+          
+          echo "Backup job completed successfully!"
+        env:
+        - name: RETENTION_DAYS
+          value: "7"
+        envFrom:
+        - secretRef:
+            name: r2-backup-credentials
+        volumeMounts:
+        - name: backup-storage
+          mountPath: /backup
+      
+      volumes:
+      - name: backup-storage
+        emptyDir: {}
