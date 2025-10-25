@@ -8,3 +8,4 @@ resources:
   - backup-cronjob.yaml
   - sealed-secrets/postgres-credentials-sealed.yaml
   - sealed-secrets/r2-backup-credentials-sealed.yaml
+  - sealed-secrets/discord-webhook-sealed.yaml

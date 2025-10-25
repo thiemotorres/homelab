@@ -68,7 +68,24 @@ spec:
             - -c
             - |
               set -e
-              
+
+              # Fehler-Notification Funktion definieren
+              send_failure_notification() {
+                if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+                  curl -H "Content-Type: application/json" \
+                    -d '{"embeds": [{
+                      "title": "❌ PostgreSQL Backup fehlgeschlagen",
+                      "description": "Upload zu R2 ist fehlgeschlagen. Bitte Logs prüfen!",
+                      "color": 15158332,
+                      "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
+                    }]}' \
+                    "$DISCORD_WEBHOOK_URL" 2>/dev/null || true
+                fi
+              }
+
+              # Trap für Fehler aktivieren
+              trap 'send_failure_notification' ERR
+
               # rclone config für R2 erstellen
               echo "Configuring rclone for Cloudflare R2..."
               mkdir -p /root/.config/rclone
@@ -103,15 +120,45 @@ spec:
               
               # Liste aller Backups anzeigen
               echo "Current backups in R2:"
-              rclone ls r2:${BUCKET_NAME}/ --include "postgres_backup_*.sql.gz"
-              
+              BACKUP_LIST=$(rclone ls r2:${BUCKET_NAME}/ --include "postgres_backup_*.sql.gz")
+              echo "$BACKUP_LIST"
+
+              BACKUP_COUNT=$(echo "$BACKUP_LIST" | wc -l)
+
               echo "Backup job completed successfully!"
+
+              # Discord Notification senden
+              if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+                echo "Sending Discord notification..."
+
+                BACKUP_SIZE=$(echo "$BACKUP_LIST" | grep "$BACKUP_FILE" | awk '{print $1}')
+                BACKUP_SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $BACKUP_SIZE/1024/1024}")
+
+                curl -H "Content-Type: application/json" \
+                  -d "{
+                    \"embeds\": [{
+                      \"title\": \"✅ PostgreSQL Backup erfolgreich\",
+                      \"description\": \"Backup wurde erfolgreich zu Cloudflare R2 hochgeladen.\",
+                      \"color\": 5763719,
+                      \"fields\": [
+                        {\"name\": \"📁 Datei\", \"value\": \"\`$BACKUP_FILE\`\", \"inline\": false},
+                        {\"name\": \"💾 Größe\", \"value\": \"${BACKUP_SIZE_MB} MB\", \"inline\": true},
+                        {\"name\": \"📊 Gesamt Backups\", \"value\": \"$BACKUP_COUNT\", \"inline\": true},
+                        {\"name\": \"🗓️ Retention\", \"value\": \"${RETENTION_DAYS} Tage\", \"inline\": true}
+                      ],
+                      \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+                    }]
+                  }" \
+                  "$DISCORD_WEBHOOK_URL" || echo "Discord notification failed (non-critical)"
+              fi
             env:
             - name: RETENTION_DAYS
               value: "7"
             envFrom:
             - secretRef:
                 name: r2-backup-credentials
+            - secretRef:
+                name: discord-webhook
             volumeMounts:
             - name: backup-storage
               mountPath: /backup

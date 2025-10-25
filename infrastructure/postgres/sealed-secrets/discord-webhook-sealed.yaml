@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: discord-webhook
+  namespace: infrastructure
+spec:
+  encryptedData:
+    DISCORD_WEBHOOK_URL: AgBCgihhJDx/Zm4gNnxHOWMLvcWsl3mKdUxZWAmHsELjL7JRs9QBCrAhEQ//zN8oYmmYbytrn4OuJbbQp3iU6ThG6gFuUga0cvTwVTlua6ySGplWX6WHFaH4qaOEUEm637e1OLNMbB5aNsfLFF3SU666FnFKH0bzw/UrMre6gMyIOQRj4MDbMdmnYjH1gAdnOUMHzOQ9FZwzXJUn1dgfW/shS1VrgbrAaez9gvVwLgQHJYMg+4iihKSrLb1zRIAJWnooJRbhKFiSawXiPxb1RurUqXw5UKFjT1bGSYVoZxsjn2Gt9nFyxosdGmNtyc4g4eswpZG0KgwnA9A+KpY5EIiguMzrV5k5dO9PcVQRkiX49VqVpeDI1Xp2OvkN5NwFNRhAuirO6CjDvScUalARmcLtbGe1HpTTDPlckfD37ksE2dv2IL++RdmhIahP/fsK65Jtc0eWWEfQ6VYXuRVjzMRrLJmGLMAJAWhuxtoMhGLu6AcwkL1eOjgGIbt+8eQ/UGFl17kI3LudVC77ZclDmvdmZ23mVrWe4ZHwtzxxqcxkEHb4W7xDFKHxMLFXzHNgW59LO15LPRL4tHARUuk495QMFg38p82T5mk0+ceD0Uml1mlisprrZBNa9rIv+hvx6EjFeVYNONpDeEVtO19F5vNyzrSu/yNrYNPI2eysjvkwLPD5R98oXCXV/upCf87O0HZpUu4sYeUPZMidlQP44ZzpF7OxlOwvW9uJzXepmYeg88kanF6W4qxLc3NZmSecMAh08mxty40WJkV4vnEfCjR8UYM0b2pj4cxYagJ0/KhB6+3AKOy+XHHq+9vp+F4h+jFfBq12Rg6NXGR465jXJ6nuACZxPGJb36tY
+  template:
+    metadata:
+      name: discord-webhook
+      namespace: infrastructure
+    type: Opaque
