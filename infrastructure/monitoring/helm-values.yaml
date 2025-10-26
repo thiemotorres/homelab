@@ -18,6 +18,7 @@ defaultRules:
     kubernetesStorage: true
     kubernetesSystem: true
     kubeScheduler: false  # K3s managed
+    kubeProxy: false  # K3s managed
     network: true
     node: true
     prometheus: true
@@ -213,5 +214,9 @@ kubeControllerManager:
 
 # Disable kube-scheduler metrics (K3s managed)
 kubeScheduler:
+  enabled: false
+
+# Disable kube-proxy metrics (K3s managed)
+kubeProxy:
   enabled: false
   
