@@ -4,6 +4,18 @@ secrets/*.secret.yaml
 secrets/age.key
 secrets/*.key
 
+# Private keys (any location)
+*-key.pem
+*.key
+!pub-cert.pem  # Public cert is OK
+
+# Unsealed secrets (anywhere in repo)
+*-secret.yaml
+!*-sealed.yaml  # Sealed secrets are OK
+
+# Kubeseal private key
+sealed-secrets-key.yaml
+
 # Ausnahme: README darf commited werden
 !secrets/README.md
 
@@ -11,9 +23,26 @@ secrets/*.key
 *.tmp
 *.swp
 *~
+*.bak
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Local scripts with credentials
 migrate_database.sh
+
+# Templates (examples only)
 apps/external-services/TEMPLATE.yaml
+
+# Kubernetes contexts (may contain cluster info)
+kubeconfig
+*.kubeconfig
+
+# Terraform state (if you add Terraform later)
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# ArgoCD initial admin password
+argocd-initial-admin-secret.yaml
