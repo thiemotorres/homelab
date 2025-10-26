@@ -1,10 +1,10 @@
 # Homelab
 
-A production-grade Kubernetes-based homelab running on K3s with GitOps practices using ArgoCD.
+A production-grade Kubernetes-based homelab running on K3s with GitOps practices using ArgoCD. Specifically used for my own learning purposes.
 
 ## Overview
 
-This repository contains the infrastructure and application configurations for a personal homelab cluster. The setup uses:
+This repository contains the infrastructure and application configurations for my personal homelab cluster. The setup uses:
 
 - **K3s** - Lightweight Kubernetes distribution
 - **ArgoCD** - GitOps continuous delivery
