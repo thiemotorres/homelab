@@ -1,0 +1,323 @@
+name: Security Scanning
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Run weekly on Mondays at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  secret-scanning:
+    name: Scan for Leaked Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better secret detection
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  kube-linter:
+    name: Kubernetes Security Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kustomize
+        uses: imranismail/setup-kustomize@v2
+        with:
+          kustomize-version: '5.3.0'
+
+      - name: Build manifests for scanning
+        run: |
+          mkdir -p /tmp/manifests
+          kustomize build infrastructure/ > /tmp/manifests/infrastructure.yaml || echo "Failed to build infrastructure"
+          kustomize build apps/ > /tmp/manifests/apps.yaml || echo "Failed to build apps"
+
+      - name: Scan with kube-linter
+        uses: stackrox/kube-linter-action@v1
+        with:
+          directory: /tmp/manifests
+          config: .kube-linter.yaml
+        continue-on-error: true
+
+      - name: Scan individual app manifests
+        uses: stackrox/kube-linter-action@v1
+        with:
+          directory: apps/
+          config: .kube-linter.yaml
+        continue-on-error: true
+
+      - name: Scan infrastructure manifests
+        uses: stackrox/kube-linter-action@v1
+        with:
+          directory: infrastructure/
+          config: .kube-linter.yaml
+        continue-on-error: true
+
+  rbac-validation:
+    name: RBAC Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check RBAC configurations
+        run: |
+          echo "## RBAC Security Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Find all RBAC files
+          rbac_files=$(find . -name "rbac.yaml" -o -name "*role*.yaml" | grep -v ".git")
+
+          if [ -z "$rbac_files" ]; then
+            echo "⚠️ No RBAC files found" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          echo "### RBAC Files Found:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          for file in $rbac_files; do
+            echo "#### $file" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Check for overly permissive rules
+            if grep -q "verbs:.*\*" "$file" 2>/dev/null; then
+              echo "⚠️ **Warning**: Found wildcard (*) in verbs - overly permissive" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            if grep -q "resources:.*\*" "$file" 2>/dev/null; then
+              echo "⚠️ **Warning**: Found wildcard (*) in resources - overly permissive" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            if grep -q "apiGroups:.*\*" "$file" 2>/dev/null; then
+              echo "⚠️ **Warning**: Found wildcard (*) in apiGroups - overly permissive" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Check for dangerous permissions
+            if grep -q "create.*pods/exec" "$file" 2>/dev/null; then
+              echo "🚨 **Critical**: Found pods/exec permission - allows command execution in pods" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            if grep -q "create.*secrets" "$file" 2>/dev/null; then
+              echo "⚠️ **Warning**: Found secrets creation permission" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # List permissions for review
+            echo "<details>" >> $GITHUB_STEP_SUMMARY
+            echo "<summary>View Permissions</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```yaml' >> $GITHUB_STEP_SUMMARY
+            cat "$file" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - name: Verify ServiceAccounts exist for all deployments
+        run: |
+          echo "### ServiceAccount Verification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Find all deployment files
+          for deploy in $(find apps/ infrastructure/ -name "*deployment*.yaml" -type f); do
+            if grep -q "kind: Deployment" "$deploy"; then
+              deployment_name=$(grep "name:" "$deploy" | head -1 | awk '{print $2}')
+
+              # Check if serviceAccountName is specified
+              if grep -q "serviceAccountName:" "$deploy"; then
+                sa_name=$(grep "serviceAccountName:" "$deploy" | head -1 | awk '{print $2}')
+                echo "✓ **$deployment_name** uses ServiceAccount: \`$sa_name\`" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "⚠️ **$deployment_name** uses default ServiceAccount (not recommended)" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          done
+
+  kubesec-scan:
+    name: Kubesec Security Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kustomize
+        uses: imranismail/setup-kustomize@v2
+        with:
+          kustomize-version: '5.3.0'
+
+      - name: Build manifests
+        run: |
+          mkdir -p /tmp/kubesec
+          kustomize build apps/gork/ > /tmp/kubesec/gork.yaml || true
+          kustomize build apps/n8n/ > /tmp/kubesec/n8n.yaml || true
+          kustomize build infrastructure/postgres/ > /tmp/kubesec/postgres.yaml || true
+
+      - name: Run Kubesec Scanner
+        run: |
+          docker run --rm -v /tmp/kubesec:/manifests kubesec/kubesec:v2 scan /manifests/*.yaml > /tmp/kubesec-results.json || true
+
+      - name: Display Kubesec Results
+        run: |
+          if [ -f /tmp/kubesec-results.json ]; then
+            echo "## Kubesec Security Scan Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat /tmp/kubesec-results.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+        continue-on-error: true
+
+  network-policy-check:
+    name: Network Policy Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for Network Policies
+        run: |
+          echo "## Network Policy Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Look for NetworkPolicy resources
+          network_policies=$(find . -name "*.yaml" -type f -exec grep -l "kind: NetworkPolicy" {} \; | grep -v ".git" || true)
+
+          if [ -z "$network_policies" ]; then
+            echo "⚠️ **No NetworkPolicies found**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Consider implementing NetworkPolicies for defense-in-depth security:" >> $GITHUB_STEP_SUMMARY
+            echo "- Restrict pod-to-pod communication" >> $GITHUB_STEP_SUMMARY
+            echo "- Limit ingress/egress traffic" >> $GITHUB_STEP_SUMMARY
+            echo "- Isolate sensitive workloads (databases, etc.)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✓ **NetworkPolicies found:**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            for policy in $network_policies; do
+              echo "- $policy" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+
+  resource-limits-check:
+    name: Resource Limits Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Resource Limits
+        run: |
+          echo "## Resource Limits Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Find all deployments and check for resource limits
+          for deploy in $(find apps/ infrastructure/ -name "*deployment*.yaml" -type f); do
+            if grep -q "kind: Deployment\|kind: StatefulSet\|kind: DaemonSet" "$deploy"; then
+              name=$(basename "$deploy")
+
+              echo "### $name" >> $GITHUB_STEP_SUMMARY
+
+              if grep -q "resources:" "$deploy"; then
+                if grep -q "limits:" "$deploy" && grep -q "requests:" "$deploy"; then
+                  echo "✓ Has both requests and limits defined" >> $GITHUB_STEP_SUMMARY
+                elif grep -q "limits:" "$deploy"; then
+                  echo "⚠️ Has limits but missing requests" >> $GITHUB_STEP_SUMMARY
+                elif grep -q "requests:" "$deploy"; then
+                  echo "⚠️ Has requests but missing limits" >> $GITHUB_STEP_SUMMARY
+                fi
+              else
+                echo "❌ **No resource limits defined** - may consume unlimited resources" >> $GITHUB_STEP_SUMMARY
+              fi
+
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+  container-security:
+    name: Container Security Best Practices
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Security Context
+        run: |
+          echo "## Container Security Context" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          for deploy in $(find apps/ infrastructure/ -name "*deployment*.yaml" -type f); do
+            if grep -q "kind: Deployment\|kind: StatefulSet" "$deploy"; then
+              name=$(basename "$deploy")
+
+              echo "### $name" >> $GITHUB_STEP_SUMMARY
+
+              # Check for securityContext
+              if grep -q "securityContext:" "$deploy"; then
+                echo "✓ Has securityContext defined" >> $GITHUB_STEP_SUMMARY
+
+                # Check specific security settings
+                if grep -q "runAsNonRoot: true" "$deploy"; then
+                  echo "  ✓ Runs as non-root" >> $GITHUB_STEP_SUMMARY
+                else
+                  echo "  ⚠️ May run as root user" >> $GITHUB_STEP_SUMMARY
+                fi
+
+                if grep -q "readOnlyRootFilesystem: true" "$deploy"; then
+                  echo "  ✓ Uses read-only root filesystem" >> $GITHUB_STEP_SUMMARY
+                fi
+
+                if grep -q "allowPrivilegeEscalation: false" "$deploy"; then
+                  echo "  ✓ Prevents privilege escalation" >> $GITHUB_STEP_SUMMARY
+                else
+                  echo "  ⚠️ Privilege escalation not explicitly disabled" >> $GITHUB_STEP_SUMMARY
+                fi
+
+                if grep -q "capabilities:" "$deploy"; then
+                  echo "  ✓ Capabilities configured" >> $GITHUB_STEP_SUMMARY
+                fi
+              else
+                echo "❌ **No securityContext defined**" >> $GITHUB_STEP_SUMMARY
+              fi
+
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+  summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [secret-scanning, kube-linter, rbac-validation, kubesec-scan, network-policy-check, resource-limits-check, container-security]
+    if: always()
+    steps:
+      - name: Security scan summary
+        run: |
+          echo "# Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Scanning | ${{ needs.secret-scanning.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Kube-linter | ${{ needs.kube-linter.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| RBAC Validation | ${{ needs.rbac-validation.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Kubesec Scan | ${{ needs.kubesec-scan.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Network Policies | ${{ needs.network-policy-check.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource Limits | ${{ needs.resource-limits-check.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Container Security | ${{ needs.container-security.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.secret-scanning.result }}" == "failure" ]]; then
+            echo "🚨 **Critical**: Secret scanning detected potential leaked credentials!" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "Review the individual job outputs above for detailed security recommendations." >> $GITHUB_STEP_SUMMARY

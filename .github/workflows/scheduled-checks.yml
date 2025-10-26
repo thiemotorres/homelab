@@ -1,0 +1,402 @@
+name: Scheduled Health Checks
+
+on:
+  schedule:
+    # Run every Sunday at 3 AM UTC
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+jobs:
+  backup-validation:
+    name: Validate Backup Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check backup CronJob configuration
+        run: |
+          echo "## Backup Configuration Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          backup_file="infrastructure/postgres/backup-cronjob.yaml"
+
+          if [ -f "$backup_file" ]; then
+            echo "✓ Backup CronJob file exists" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Check schedule
+            schedule=$(grep "schedule:" "$backup_file" | awk '{print $2}')
+            echo "**Schedule**: \`$schedule\`" >> $GITHUB_STEP_SUMMARY
+
+            # Check if rclone is configured
+            if grep -q "rclone" "$backup_file"; then
+              echo "✓ rclone backup configured" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️ rclone not found in backup configuration" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Check for Discord notifications
+            if grep -q "discord" "$backup_file"; then
+              echo "✓ Discord notifications configured" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️ No Discord notifications in backup job" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Check for retention policy
+            if grep -q "days\|retention\|delete" "$backup_file"; then
+              echo "✓ Retention policy appears to be configured" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️ No explicit retention policy found" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Backup Job Details:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```yaml' >> $GITHUB_STEP_SUMMARY
+            cat "$backup_file" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Backup CronJob file not found at $backup_file" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check restore job availability
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Restore Job Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          restore_file="infrastructure/postgres/manual-restore-job.yaml"
+
+          if [ -f "$restore_file" ]; then
+            echo "✓ Manual restore job exists at $restore_file" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Manual restore job not found - consider creating one for disaster recovery" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  certificate-check:
+    name: Check Certificate Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate certificate configurations
+        run: |
+          echo "## Certificate Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Find all certificate files
+          cert_files=$(find . -name "*certificate*.yaml" -o -name "*cert*.yaml" | grep -v ".git" | grep -v "cert-manager/kustomization" | grep -v node_modules)
+
+          if [ -z "$cert_files" ]; then
+            echo "⚠️ No certificate files found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Certificates Found:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            for cert in $cert_files; do
+              echo "#### $cert" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+
+              # Check for common name or DNS names
+              if grep -q "commonName:\|dnsNames:" "$cert"; then
+                echo "✓ DNS configuration present" >> $GITHUB_STEP_SUMMARY
+              fi
+
+              # Check issuer reference
+              if grep -q "issuerRef:" "$cert"; then
+                issuer=$(grep -A 2 "issuerRef:" "$cert" | grep "name:" | awk '{print $2}')
+                echo "✓ Uses issuer: \`$issuer\`" >> $GITHUB_STEP_SUMMARY
+              fi
+
+              # Check for production vs staging
+              if grep -q "letsencrypt-prod\|production" "$cert"; then
+                echo "✓ **Production certificate**" >> $GITHUB_STEP_SUMMARY
+              elif grep -q "letsencrypt-staging\|staging" "$cert"; then
+                echo "⚠️ **Staging certificate** (for testing)" >> $GITHUB_STEP_SUMMARY
+              fi
+
+              echo "" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+
+      - name: Check ClusterIssuers
+        run: |
+          echo "## ClusterIssuer Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check for ClusterIssuer files
+          if [ -f "infrastructure/cert-manager/clusterissuer-prod.yaml" ]; then
+            echo "✓ Production ClusterIssuer configured" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Production ClusterIssuer not found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f "infrastructure/cert-manager/clusterissuer-staging.yaml" ]; then
+            echo "✓ Staging ClusterIssuer configured" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Staging ClusterIssuer not found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  monitoring-config-check:
+    name: Validate Monitoring Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Prometheus configuration
+        run: |
+          echo "## Monitoring Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          monitoring_file="infrastructure/monitoring/helm-values.yaml"
+
+          if [ -f "$monitoring_file" ]; then
+            echo "✓ Monitoring values file exists" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Check retention
+            if grep -q "retention:" "$monitoring_file"; then
+              retention=$(grep "retention:" "$monitoring_file" | head -1 | awk '{print $2}')
+              echo "**Prometheus Retention**: $retention" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Check storage size
+            if grep -q "storageSize:\|size:" "$monitoring_file"; then
+              echo "✓ Storage size configured" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Check if Grafana is enabled
+            if grep -q "grafana:" "$monitoring_file"; then
+              echo "✓ Grafana configuration present" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Check for Alertmanager
+            if grep -q "alertmanager:" "$monitoring_file"; then
+              echo "✓ Alertmanager configuration present" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⚠️ Monitoring values file not found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check alert configurations
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Alert Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check for Discord webhook configuration
+          if find infrastructure/monitoring -name "*discord*.yaml" | grep -q .; then
+            echo "✓ Discord integration configured" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Discord integration not found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check for alert rules
+          alert_files=$(find . -name "*alert*.yaml" -o -name "*prometheusrule*.yaml" | grep -v ".git" | grep -v node_modules || true)
+
+          if [ -n "$alert_files" ]; then
+            echo "✓ Alert rule files found" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Alert Files:**" >> $GITHUB_STEP_SUMMARY
+            echo "$alert_files" | while read -r file; do
+              echo "- $file" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "ℹ️ No custom alert rule files found (may be using defaults)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  argocd-health-check:
+    name: Validate ArgoCD Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check ArgoCD App of Apps structure
+        run: |
+          echo "## ArgoCD Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          root_app="argocd-apps/root-app.yaml"
+
+          if [ -f "$root_app" ]; then
+            echo "✓ Root application exists" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # List all ArgoCD apps
+            echo "### Registered Applications:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            for app in argocd-apps/*.yaml; do
+              if [ -f "$app" ]; then
+                app_name=$(basename "$app" .yaml)
+                echo "- **$app_name**" >> $GITHUB_STEP_SUMMARY
+
+                # Check if path exists
+                path=$(grep "path:" "$app" | head -1 | awk '{print $2}')
+                if [ -n "$path" ] && [ -d "$path" ]; then
+                  echo "  ✓ Path exists: \`$path\`" >> $GITHUB_STEP_SUMMARY
+                elif [ -n "$path" ]; then
+                  echo "  ⚠️ Path not found: \`$path\`" >> $GITHUB_STEP_SUMMARY
+                fi
+
+                # Check sync policy
+                if grep -q "automated:" "$app"; then
+                  echo "  ✓ Automated sync enabled" >> $GITHUB_STEP_SUMMARY
+                else
+                  echo "  ℹ️ Manual sync only" >> $GITHUB_STEP_SUMMARY
+                fi
+
+                echo "" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          else
+            echo "❌ Root application not found at $root_app" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Validate bootstrap process
+        run: |
+          echo "## Bootstrap Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -d "bootstrap/argocd" ]; then
+            echo "✓ ArgoCD bootstrap directory exists" >> $GITHUB_STEP_SUMMARY
+
+            # Check for required files
+            required_files=(
+              "bootstrap/argocd/kustomization.yaml"
+              "bootstrap/argocd/namespace.yaml"
+              "bootstrap/argocd/Chart.yaml"
+            )
+
+            for file in "${required_files[@]}"; do
+              if [ -f "$file" ]; then
+                echo "  ✓ $file exists" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "  ⚠️ $file missing" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          else
+            echo "⚠️ Bootstrap directory not found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  dependency-check:
+    name: Check Helm Chart Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "## Helm Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Add repositories
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo add traefik https://traefik.github.io/charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add jetstack https://charts.jetstack.io
+          helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
+          helm repo update
+
+          echo "### Current Chart Versions in Repo:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check ArgoCD version
+          if [ -f "bootstrap/argocd/Chart.yaml" ]; then
+            current_version=$(grep "version:" bootstrap/argocd/Chart.yaml | head -1 | awk '{print $2}')
+            latest_version=$(helm search repo argo/argo-cd --versions | head -2 | tail -1 | awk '{print $2}')
+
+            echo "**ArgoCD**" >> $GITHUB_STEP_SUMMARY
+            echo "- Current: \`$current_version\`" >> $GITHUB_STEP_SUMMARY
+            echo "- Latest: \`$latest_version\`" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$current_version" != "$latest_version" ]; then
+              echo "- ℹ️ Update available" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- ✓ Up to date" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check for other Helm charts in ArgoCD apps
+          for app in argocd-apps/*.yaml; do
+            if grep -q "chart:" "$app"; then
+              chart=$(grep "chart:" "$app" | awk '{print $2}')
+              version=$(grep "targetRevision:" "$app" | awk '{print $2}')
+
+              echo "**$chart**" >> $GITHUB_STEP_SUMMARY
+              echo "- Configured version: \`$version\`" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+  resource-review:
+    name: Review Resource Allocations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Analyze resource requests and limits
+        run: |
+          echo "## Resource Allocation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Find all deployment files and extract resource configs
+          for deploy in $(find apps/ infrastructure/ -name "*deployment*.yaml" -type f); do
+            if grep -q "kind: Deployment\|kind: StatefulSet" "$deploy"; then
+              name=$(basename "$deploy")
+
+              echo "### $name" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+
+              # Extract memory requests/limits
+              if grep -q "memory:" "$deploy"; then
+                echo "**Memory:**" >> $GITHUB_STEP_SUMMARY
+                grep -A 2 "requests:" "$deploy" | grep "memory:" | head -1 | awk '{print "- Request: " $2}' >> $GITHUB_STEP_SUMMARY || true
+                grep -A 2 "limits:" "$deploy" | grep "memory:" | head -1 | awk '{print "- Limit: " $2}' >> $GITHUB_STEP_SUMMARY || true
+              fi
+
+              # Extract CPU requests/limits
+              if grep -q "cpu:" "$deploy"; then
+                echo "**CPU:**" >> $GITHUB_STEP_SUMMARY
+                grep -A 2 "requests:" "$deploy" | grep "cpu:" | head -1 | awk '{print "- Request: " $2}' >> $GITHUB_STEP_SUMMARY || true
+                grep -A 2 "limits:" "$deploy" | grep "cpu:" | head -1 | awk '{print "- Limit: " $2}' >> $GITHUB_STEP_SUMMARY || true
+              fi
+
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+  summary:
+    name: Health Check Summary
+    runs-on: ubuntu-latest
+    needs: [backup-validation, certificate-check, monitoring-config-check, argocd-health-check, dependency-check, resource-review]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "# Weekly Health Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Completed at: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backup Configuration | ${{ needs.backup-validation.result == 'success' && '✅ Healthy' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Certificates | ${{ needs.certificate-check.result == 'success' && '✅ Healthy' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Monitoring | ${{ needs.monitoring-config-check.result == 'success' && '✅ Healthy' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ArgoCD | ${{ needs.argocd-health-check.result == 'success' && '✅ Healthy' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependencies | ${{ needs.dependency-check.result == 'success' && '✅ Healthy' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Resources | ${{ needs.resource-review.result == 'success' && '✅ Healthy' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Review individual job outputs for detailed information and recommendations." >> $GITHUB_STEP_SUMMARY

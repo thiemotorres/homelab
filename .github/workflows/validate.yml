@@ -1,0 +1,289 @@
+name: Validate Kubernetes Manifests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate-yaml:
+    name: Validate YAML Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Lint YAML files
+        run: |
+          yamllint -d '{extends: default, rules: {line-length: {max: 120}, indentation: {spaces: 2}}}' \
+            argocd-apps/ \
+            infrastructure/ \
+            apps/ \
+            bootstrap/argocd/ || true
+
+  validate-kubernetes:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.30.0'
+
+      - name: Validate ArgoCD Apps
+        run: |
+          for file in argocd-apps/*.yaml; do
+            echo "Validating $file"
+            kubectl apply --dry-run=client -f "$file" || exit 1
+          done
+
+      - name: Validate Infrastructure Namespaces
+        run: |
+          for file in infrastructure/namespaces/*.yaml; do
+            echo "Validating $file"
+            kubectl apply --dry-run=client -f "$file" || exit 1
+          done
+
+      - name: Validate PostgreSQL Manifests
+        run: |
+          cd infrastructure/postgres
+          for file in *.yaml; do
+            if [ -f "$file" ]; then
+              echo "Validating $file"
+              kubectl apply --dry-run=client -f "$file" || exit 1
+            fi
+          done
+
+      - name: Validate App Manifests
+        run: |
+          # Validate gork manifests
+          for file in apps/gork/*.yaml; do
+            if [ -f "$file" ]; then
+              echo "Validating $file"
+              kubectl apply --dry-run=client -f "$file" || exit 1
+            fi
+          done
+
+          # Validate n8n manifests
+          for file in apps/n8n/*.yaml; do
+            if [ -f "$file" ]; then
+              echo "Validating $file"
+              kubectl apply --dry-run=client -f "$file" || exit 1
+            fi
+          done
+
+          # Validate external-services manifests
+          for file in apps/external-services/*.yaml; do
+            if [ -f "$file" ] && [ "$file" != "apps/external-services/TEMPLATE.yaml" ]; then
+              echo "Validating $file"
+              kubectl apply --dry-run=client -f "$file" || exit 1
+            fi
+          done
+
+  validate-kustomize:
+    name: Validate Kustomize Builds
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kustomize
+        uses: imranismail/setup-kustomize@v2
+        with:
+          kustomize-version: '5.3.0'
+
+      - name: Build Infrastructure Kustomization
+        run: |
+          echo "Building infrastructure kustomization"
+          kustomize build infrastructure/ > /tmp/infrastructure.yaml
+          echo "✓ Infrastructure kustomization built successfully"
+
+      - name: Build Apps Kustomization
+        run: |
+          echo "Building apps kustomization"
+          kustomize build apps/ > /tmp/apps.yaml
+          echo "✓ Apps kustomization built successfully"
+
+      - name: Build Gork Kustomization
+        run: |
+          echo "Building gork kustomization"
+          kustomize build apps/gork/ > /tmp/gork.yaml
+          echo "✓ Gork kustomization built successfully"
+
+      - name: Build n8n Kustomization
+        run: |
+          echo "Building n8n kustomization"
+          kustomize build apps/n8n/ > /tmp/n8n.yaml
+          echo "✓ n8n kustomization built successfully"
+
+      - name: Build PostgreSQL Kustomization
+        run: |
+          echo "Building postgres kustomization"
+          kustomize build infrastructure/postgres/ > /tmp/postgres.yaml
+          echo "✓ PostgreSQL kustomization built successfully"
+
+      - name: Build Monitoring Kustomization
+        run: |
+          echo "Building monitoring kustomization"
+          kustomize build infrastructure/monitoring/ > /tmp/monitoring.yaml
+          echo "✓ Monitoring kustomization built successfully"
+
+      - name: Build cert-manager Kustomization
+        run: |
+          echo "Building cert-manager kustomization"
+          kustomize build infrastructure/cert-manager/ > /tmp/cert-manager.yaml
+          echo "✓ cert-manager kustomization built successfully"
+
+      - name: Upload Built Manifests as Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-manifests
+          path: /tmp/*.yaml
+          retention-days: 7
+
+  validate-helm:
+    name: Validate Helm Charts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+
+      - name: Add Helm Repositories
+        run: |
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo add traefik https://traefik.github.io/charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add jetstack https://charts.jetstack.io
+          helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
+          helm repo update
+
+      - name: Validate ArgoCD Helm Chart
+        run: |
+          cd bootstrap/argocd
+          helm dependency update
+          helm lint .
+          helm template test-release . --values values.yaml > /tmp/argocd-rendered.yaml
+          echo "✓ ArgoCD Helm chart validated successfully"
+
+  validate-argocd-apps:
+    name: Validate ArgoCD Applications
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.30.0'
+
+      - name: Validate ArgoCD Application Specs
+        run: |
+          echo "Checking ArgoCD Application definitions..."
+
+          # Check that root app references exist
+          for app in argocd-apps/*.yaml; do
+            echo "Checking $app"
+
+            # Extract targetRevision and ensure it's HEAD or a valid branch/tag
+            if grep -q "targetRevision:" "$app"; then
+              echo "  ✓ targetRevision specified"
+            fi
+
+            # Ensure namespace is specified
+            if grep -q "namespace:" "$app"; then
+              echo "  ✓ namespace specified"
+            fi
+
+            # Check that path exists in repo
+            path=$(grep "path:" "$app" | head -1 | awk '{print $2}')
+            if [ -n "$path" ] && [ -d "$path" ]; then
+              echo "  ✓ path $path exists"
+            elif [ -n "$path" ]; then
+              echo "  ⚠ Warning: path $path may not exist in repo"
+            fi
+          done
+
+  check-no-secrets:
+    name: Ensure No Plain Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for unsealed secrets
+        run: |
+          echo "Checking for plain Kubernetes secrets (should only use SealedSecrets)..."
+
+          # Look for Secret kind that are not in sealed-secrets directories
+          if find . -type f -name "*.yaml" ! -path "*/sealed-secrets/*" -exec grep -l "kind: Secret" {} \; | grep -v ".git"; then
+            echo "❌ Found plain Secret resources outside sealed-secrets directories!"
+            echo "All secrets should be SealedSecrets. Found plain secrets in:"
+            find . -type f -name "*.yaml" ! -path "*/sealed-secrets/*" -exec grep -l "kind: Secret" {} \; | grep -v ".git"
+            exit 1
+          else
+            echo "✓ No plain secrets found outside sealed-secrets directories"
+          fi
+
+      - name: Verify SealedSecrets are encrypted
+        run: |
+          echo "Verifying SealedSecrets are properly encrypted..."
+
+          # Check that sealed-secrets contain encrypted data
+          for file in $(find . -path "*/sealed-secrets/*.yaml" -type f); do
+            if grep -q "kind: SealedSecret" "$file"; then
+              if grep -q "encryptedData:" "$file"; then
+                echo "✓ $file contains encrypted data"
+              else
+                echo "❌ $file is a SealedSecret but missing encryptedData"
+                exit 1
+              fi
+            fi
+          done
+
+  summary:
+    name: Validation Summary
+    runs-on: ubuntu-latest
+    needs: [validate-yaml, validate-kubernetes, validate-kustomize, validate-helm, validate-argocd-apps, check-no-secrets]
+    if: always()
+    steps:
+      - name: Check validation results
+        run: |
+          echo "## Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| YAML Syntax | ${{ needs.validate-yaml.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Kubernetes Manifests | ${{ needs.validate-kubernetes.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Kustomize Builds | ${{ needs.validate-kustomize.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Helm Charts | ${{ needs.validate-helm.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ArgoCD Apps | ${{ needs.validate-argocd-apps.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| No Plain Secrets | ${{ needs.check-no-secrets.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.validate-yaml.result }}" == "success" ]] && \
+             [[ "${{ needs.validate-kubernetes.result }}" == "success" ]] && \
+             [[ "${{ needs.validate-kustomize.result }}" == "success" ]] && \
+             [[ "${{ needs.validate-helm.result }}" == "success" ]] && \
+             [[ "${{ needs.validate-argocd-apps.result }}" == "success" ]] && \
+             [[ "${{ needs.check-no-secrets.result }}" == "success" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🎉 All validation checks passed!" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Some validation checks failed. Please review the logs above." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

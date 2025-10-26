@@ -1,0 +1,58 @@
+# Gitleaks configuration for homelab
+# Prevents committing secrets to the repository
+
+title = "Gitleaks Configuration for Homelab"
+
+[extend]
+useDefault = true
+
+# Additional patterns specific to homelab
+[[rules]]
+id = "sealed-secret-private-key"
+description = "Sealed Secrets Private Key"
+regex = '''-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'''
+tags = ["secret", "sealed-secrets"]
+
+[[rules]]
+id = "cloudflare-api-token"
+description = "Cloudflare API Token (unsealed)"
+regex = '''(?i)(cloudflare[_-]?api[_-]?token|cf[_-]?token)\s*[:=]\s*['"]?([a-zA-Z0-9_-]{40})['"]?'''
+tags = ["secret", "cloudflare"]
+
+[[rules]]
+id = "postgres-connection-string"
+description = "PostgreSQL Connection String"
+regex = '''postgres(ql)?://[a-zA-Z0-9_.-]+:[^@\s]+@[a-zA-Z0-9_.-]+:[0-9]+/[a-zA-Z0-9_-]+'''
+tags = ["secret", "database"]
+
+[[rules]]
+id = "discord-webhook"
+description = "Discord Webhook URL"
+regex = '''https://discord(app)?.com/api/webhooks/[0-9]+/[a-zA-Z0-9_-]+'''
+tags = ["secret", "webhook"]
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret"
+regex = '''(?i)(jwt[_-]?secret)\s*[:=]\s*['"]?([a-zA-Z0-9+/=]{32,})['"]?'''
+tags = ["secret", "jwt"]
+
+# Allowlists - paths to exclude from scanning
+[allowlist]
+description = "Global allowlist"
+paths = [
+  '''\.git/''',
+  '''sealed-secrets/.*\.yaml$''',  # Sealed secrets are encrypted
+  '''pub-cert\.pem$''',             # Public certificate is safe
+  '''docs/.*\.md$''',               # Documentation examples
+]
+
+# Additional allowlist for specific patterns
+regexes = [
+  '''example\.com''',
+  '''changeme''',
+  '''your-.*-here''',
+  '''<your-.*>''',
+  '''REPLACE_ME''',
+  '''TODO:''',
+]

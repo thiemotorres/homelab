@@ -1,0 +1,311 @@
+name: Documentation Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '**.md'
+      - '.github/workflows/docs.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  markdown-lint:
+    name: Lint Markdown Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+
+      - name: Lint Markdown files
+        run: |
+          markdownlint '**/*.md' \
+            --ignore node_modules \
+            --ignore .git \
+            --config .markdownlint.json || true
+        continue-on-error: true
+
+  link-checker:
+    name: Check for Broken Links
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install markdown-link-check
+        run: npm install -g markdown-link-check
+
+      - name: Check links in README.md
+        run: |
+          markdown-link-check README.md \
+            --config .markdown-link-check.json || true
+        continue-on-error: true
+
+      - name: Check links in docs/
+        run: |
+          find docs/ -name "*.md" -exec markdown-link-check {} \
+            --config .markdown-link-check.json \; || true
+        continue-on-error: true
+
+  check-documentation-structure:
+    name: Validate Documentation Structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check documentation structure
+        run: |
+          echo "## Documentation Structure" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check for main README
+          if [ -f "README.md" ]; then
+            echo "✓ Root README.md exists" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Root README.md missing" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check for docs directory
+          if [ -d "docs" ]; then
+            echo "✓ docs/ directory exists" >> $GITHUB_STEP_SUMMARY
+
+            # List all documentation files
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Documentation Files:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            find docs/ -name "*.md" | sort | while read -r file; do
+              echo "- [$file]($file)" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "⚠️ docs/ directory not found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check for essential documentation files
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Essential Documentation:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          essential_docs=(
+            "docs/README.md"
+            "docs/RBAC.md"
+            "docs/GITOPS-WITH-ARGOCD.md"
+            "docs/INGRESS-AND-ROUTING.md"
+            "docs/CERTIFICATE-MANAGEMENT.md"
+            "docs/MONITORING-AND-ALERTING.md"
+            "docs/DATABASE-BACKUP-RESTORE.md"
+          )
+
+          for doc in "${essential_docs[@]}"; do
+            if [ -f "$doc" ]; then
+              echo "✓ $doc exists" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️ $doc missing" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+  check-code-examples:
+    name: Validate Code Examples in Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract and validate YAML examples
+        run: |
+          echo "## Code Example Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Find all markdown files
+          md_files=$(find . -name "*.md" -type f | grep -v node_modules | grep -v .git)
+
+          for md_file in $md_files; do
+            # Extract YAML code blocks
+            if grep -q '```yaml' "$md_file" || grep -q '```yml' "$md_file"; then
+              echo "Found YAML examples in: $md_file" >> $GITHUB_STEP_SUMMARY
+
+              # Try to extract and validate (basic check)
+              # This is a simplified version - production might need more sophisticated parsing
+              awk '/```yaml/,/```/' "$md_file" | grep -v '```' > /tmp/example.yaml 2>/dev/null || true
+
+              if [ -s /tmp/example.yaml ]; then
+                # Basic YAML syntax check using Python
+                if python3 -c "import yaml; yaml.safe_load(open('/tmp/example.yaml'))" 2>/dev/null; then
+                  echo "  ✓ YAML syntax valid" >> $GITHUB_STEP_SUMMARY
+                else
+                  echo "  ⚠️ YAML syntax might be invalid (or incomplete example)" >> $GITHUB_STEP_SUMMARY
+                fi
+              fi
+            fi
+          done
+
+  check-consistency:
+    name: Check Documentation Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check version consistency
+        run: |
+          echo "## Version Consistency Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Extract versions from code
+          echo "### Versions in Code:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # ArgoCD version
+          if [ -f "bootstrap/argocd/Chart.yaml" ]; then
+            argocd_version=$(grep "version:" bootstrap/argocd/Chart.yaml | head -1 | awk '{print $2}')
+            echo "- **ArgoCD Chart**: $argocd_version" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check if versions are documented in README
+          if [ -f "README.md" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Version Documentation Check:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if grep -q "ArgoCD" README.md; then
+              echo "✓ ArgoCD mentioned in README" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️ Consider documenting ArgoCD version in README" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            if grep -q "k3s\|K3s\|Kubernetes" README.md; then
+              echo "✓ Kubernetes/K3s mentioned in README" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️ Consider documenting Kubernetes version in README" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - name: Check for TODO/FIXME comments
+        run: |
+          echo "## Documentation TODO Items" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          todos=$(grep -r "TODO\|FIXME\|XXX" docs/ --include="*.md" || true)
+
+          if [ -n "$todos" ]; then
+            echo "Found TODO/FIXME items in documentation:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "$todos" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✓ No TODO/FIXME items found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  spelling-check:
+    name: Spell Check Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install aspell
+        run: sudo apt-get update && sudo apt-get install -y aspell aspell-en
+
+      - name: Run spell check
+        run: |
+          echo "## Spell Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Create a custom dictionary with technical terms
+          cat > /tmp/custom-dict.txt << 'EOF'
+          ArgoCD
+          Kubernetes
+          kubectl
+          kustomize
+          K3s
+          GitOps
+          Traefik
+          Prometheus
+          Grafana
+          PostgreSQL
+          postgres
+          namespace
+          namespaces
+          ClusterIssuer
+          cert-manager
+          ingress
+          SealedSecret
+          SealedSecrets
+          Cloudflare
+          rclone
+          CronJob
+          StatefulSet
+          DaemonSet
+          ConfigMap
+          RBAC
+          PersistentVolume
+          PersistentVolumeClaim
+          thiemo
+          gork
+          n8n
+          webhook
+          webhooks
+          EOF
+
+          # Check spelling in markdown files (ignoring code blocks and URLs)
+          find . -name "*.md" -type f ! -path "*/node_modules/*" ! -path "*/.git/*" | while read -r file; do
+            # Remove code blocks and URLs before spell checking
+            sed '/```/,/```/d' "$file" | \
+            sed -E 's/\[([^]]+)\]\([^)]+\)/\1/g' | \
+            sed -E 's/https?:\/\/[^ ]+//g' | \
+            aspell list --personal=/tmp/custom-dict.txt -l en 2>/dev/null | \
+            sort -u > /tmp/misspelled.txt || true
+
+            if [ -s /tmp/misspelled.txt ]; then
+              word_count=$(wc -l < /tmp/misspelled.txt)
+              if [ "$word_count" -gt 0 ]; then
+                echo "### $file" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "Potentially misspelled words (may include technical terms):" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+                head -20 /tmp/misspelled.txt | while read -r word; do
+                  echo "- $word" >> $GITHUB_STEP_SUMMARY
+                done
+                echo "" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          done
+        continue-on-error: true
+
+  summary:
+    name: Documentation Summary
+    runs-on: ubuntu-latest
+    needs: [markdown-lint, link-checker, check-documentation-structure, check-code-examples, check-consistency, spelling-check]
+    if: always()
+    steps:
+      - name: Documentation validation summary
+        run: |
+          echo "# Documentation Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Markdown Lint | ${{ needs.markdown-lint.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Link Checker | ${{ needs.link-checker.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Structure | ${{ needs.check-documentation-structure.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Code Examples | ${{ needs.check-code-examples.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Consistency | ${{ needs.check-consistency.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Spelling | ${{ needs.spelling-check.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,36 @@
+# kube-linter configuration for homelab
+# Checks Kubernetes manifests for security and best practices
+
+checks:
+  # Exclude checks that may not apply to homelab environment
+  doNotAutoAddDefaults: false
+
+  exclude:
+    # Allow privileged containers for system components if needed
+    - "privileged-container"
+    # Allow host network for traefik and monitoring
+    - "host-network"
+    # Allow writable host mounts for local-path provisioner
+    - "writable-host-mount"
+    # Allow running as root for some infrastructure components
+    - "run-as-non-root"
+
+  # Add custom checks
+  addAllBuiltIn: true
+
+# Ignore specific paths
+ignore:
+  - path: "sealed-secrets/**"
+    reason: "Sealed secrets are encrypted and don't need additional validation"
+  - path: "**/TEMPLATE.yaml"
+    reason: "Templates are not actual deployments"
+  - path: ".git/**"
+    reason: "Git internals"
+  - path: "node_modules/**"
+    reason: "Dependencies"
+
+# Custom rules severity
+customChecks: []
+
+# Output format (json, plain, sarif)
+format: plain
