@@ -33,32 +33,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: 'v1.30.0'
+      - name: Install kubeval
+        run: |
+          wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo mv kubeval /usr/local/bin/
+          kubeval --version
 
       - name: Validate ArgoCD Apps
         run: |
           for file in argocd-apps/*.yaml; do
             echo "Validating $file"
-            kubectl apply --dry-run=client -f "$file" || exit 1
+            kubeval --ignore-missing-schemas "$file" || exit 1
           done
 
       - name: Validate Infrastructure Namespaces
         run: |
           for file in infrastructure/namespaces/*.yaml; do
             echo "Validating $file"
-            kubectl apply --dry-run=client -f "$file" || exit 1
+            kubeval --ignore-missing-schemas "$file" || exit 1
           done
 
       - name: Validate PostgreSQL Manifests
         run: |
           cd infrastructure/postgres
           for file in *.yaml; do
-            if [ -f "$file" ]; then
+            if [ -f "$file" ] && [ "$file" != "kustomization.yaml" ]; then
               echo "Validating $file"
-              kubectl apply --dry-run=client -f "$file" || exit 1
+              kubeval --ignore-missing-schemas "$file" || exit 1
             fi
           done
 
@@ -66,25 +68,27 @@ jobs:
         run: |
           # Validate gork manifests
           for file in apps/gork/*.yaml; do
-            if [ -f "$file" ]; then
+            if [ -f "$file" ] && [ "$file" != "apps/gork/kustomization.yaml" ]; then
               echo "Validating $file"
-              kubectl apply --dry-run=client -f "$file" || exit 1
+              kubeval --ignore-missing-schemas "$file" || exit 1
             fi
           done
 
           # Validate n8n manifests
           for file in apps/n8n/*.yaml; do
-            if [ -f "$file" ]; then
+            if [ -f "$file" ] && [ "$file" != "apps/n8n/kustomization.yaml" ]; then
               echo "Validating $file"
-              kubectl apply --dry-run=client -f "$file" || exit 1
+              kubeval --ignore-missing-schemas "$file" || exit 1
             fi
           done
 
           # Validate external-services manifests
           for file in apps/external-services/*.yaml; do
-            if [ -f "$file" ] && [ "$file" != "apps/external-services/TEMPLATE.yaml" ]; then
+            if [ -f "$file" ] && \
+               [ "$file" != "apps/external-services/TEMPLATE.yaml" ] && \
+               [ "$file" != "apps/external-services/kustomization.yaml" ]; then
               echo "Validating $file"
-              kubectl apply --dry-run=client -f "$file" || exit 1
+              kubeval --ignore-missing-schemas "$file" || exit 1
             fi
           done
 
@@ -184,11 +188,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: 'v1.30.0'
 
       - name: Validate ArgoCD Application Specs
         run: |

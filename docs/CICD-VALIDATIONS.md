@@ -12,7 +12,7 @@ This directory contains GitHub Actions workflows for validating, securing, and m
 
 **Jobs**:
 - **validate-yaml**: Lints all YAML files for syntax errors
-- **validate-kubernetes**: Validates Kubernetes manifests with `kubectl --dry-run`
+- **validate-kubernetes**: Validates Kubernetes manifests with `kubeval` (no cluster required)
 - **validate-kustomize**: Builds and validates all Kustomize overlays
 - **validate-helm**: Validates Helm charts and templates
 - **validate-argocd-apps**: Checks ArgoCD Application definitions
@@ -202,8 +202,14 @@ yamllint argocd-apps/ infrastructure/ apps/
 
 **Kubernetes Manifest Errors**:
 ```bash
-# Test manifests locally
-kubectl apply --dry-run=client -f infrastructure/postgres/postgres.yaml
+# Test manifests locally with kubeval (recommended for CI/CD)
+wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+tar xf kubeval-linux-amd64.tar.gz
+sudo mv kubeval /usr/local/bin/
+kubeval --ignore-missing-schemas infrastructure/postgres/postgres.yaml
+
+# Or use kubectl if you have cluster access
+kubectl apply --dry-run=client --validate=false -f infrastructure/postgres/postgres.yaml
 ```
 
 **Kustomize Build Failures**:
@@ -251,8 +257,11 @@ kustomize build apps/gork/
    # YAML syntax
    yamllint infrastructure/
 
-   # Kubernetes manifests
-   kubectl apply --dry-run=client -f infrastructure/
+   # Kubernetes manifests (using kubeval - no cluster needed)
+   kubeval --ignore-missing-schemas infrastructure/postgres/*.yaml
+
+   # Or with kubectl if you have cluster access
+   kubectl apply --dry-run=client --validate=false -f infrastructure/
 
    # Kustomize builds
    kustomize build infrastructure/
