@@ -1,0 +1,52 @@
+# RBAC Configuration for n8n
+# n8n is a workflow automation tool that needs access to its database credentials
+# Following principle of least privilege
+
+---
+# ServiceAccount for n8n
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: n8n-sa
+  namespace: n8n
+  labels:
+    app.kubernetes.io/name: n8n
+    app.kubernetes.io/part-of: n8n-app
+
+---
+# Role for n8n
+# Allows reading database credentials only
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: n8n-role
+  namespace: n8n
+rules:
+# Allow reading specific secrets for database connection
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames:
+    - "postgres-credentials"    # Database credentials
+  verbs: ["get"]
+
+# n8n might store workflow configurations in ConfigMaps
+# If you use this feature, uncomment below:
+# - apiGroups: [""]
+#   resources: ["configmaps"]
+#   verbs: ["get", "list", "create", "update", "patch", "delete"]
+
+---
+# RoleBinding for n8n
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: n8n-binding
+  namespace: n8n
+subjects:
+- kind: ServiceAccount
+  name: n8n-sa
+  namespace: n8n
+roleRef:
+  kind: Role
+  name: n8n-role
+  apiGroup: rbac.authorization.k8s.io

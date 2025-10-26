@@ -1,0 +1,88 @@
+# RBAC Configuration for PostgreSQL and Backup Jobs
+# Following principle of least privilege
+
+---
+# ServiceAccount for PostgreSQL
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-sa
+  namespace: infrastructure
+  labels:
+    app.kubernetes.io/name: postgres
+
+---
+# ServiceAccount for Backup CronJob
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-backup-sa
+  namespace: infrastructure
+  labels:
+    app.kubernetes.io/name: postgres-backup
+
+---
+# Role for PostgreSQL
+# PostgreSQL needs to read its own credentials
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: postgres-role
+  namespace: infrastructure
+rules:
+# Allow reading database credentials
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames:
+    - "postgres-credentials"
+  verbs: ["get"]
+
+---
+# Role for Backup Jobs
+# Backup jobs need to read database credentials, R2 credentials, and Discord webhook
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: postgres-backup-role
+  namespace: infrastructure
+rules:
+# Allow reading secrets needed for backup
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames:
+    - "postgres-credentials"      # Database credentials
+    - "r2-backup-credentials"     # Cloudflare R2 credentials
+    - "discord-webhook"           # Discord notification webhook
+  verbs: ["get"]
+
+---
+# RoleBinding for PostgreSQL
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: postgres-binding
+  namespace: infrastructure
+subjects:
+- kind: ServiceAccount
+  name: postgres-sa
+  namespace: infrastructure
+roleRef:
+  kind: Role
+  name: postgres-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# RoleBinding for Backup Jobs
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: postgres-backup-binding
+  namespace: infrastructure
+subjects:
+- kind: ServiceAccount
+  name: postgres-backup-sa
+  namespace: infrastructure
+roleRef:
+  kind: Role
+  name: postgres-backup-role
+  apiGroup: rbac.authorization.k8s.io

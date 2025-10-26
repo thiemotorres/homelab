@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: infrastructure
 
 resources:
+  - rbac.yaml
   - postgres.yaml
   - service.yaml
   - backup-cronjob.yaml

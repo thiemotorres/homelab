@@ -4,6 +4,7 @@ namespace: gork
 
 resources:
   - namespace.yaml
+  - rbac.yaml
   - backend-deployment.yaml
   - frontend-deployment.yaml
   - service.yaml

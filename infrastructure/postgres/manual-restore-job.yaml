@@ -6,6 +6,7 @@ metadata:
 spec:
   template:
     spec:
+      serviceAccountName: postgres-backup-sa
       restartPolicy: Never
       containers:
       - name: restore

@@ -11,8 +11,9 @@ spec:
     spec:
       template:
         spec:
+          serviceAccountName: postgres-backup-sa
           restartPolicy: OnFailure
-          
+
           # 1. Init Container: PostgreSQL Dump
           initContainers:
           - name: postgres-dump

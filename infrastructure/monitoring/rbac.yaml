@@ -1,0 +1,45 @@
+# RBAC Configuration for Monitoring Infrastructure
+# This includes alertmanager-discord webhook adapter
+# The main Prometheus stack has its own ServiceAccounts managed by the Helm chart
+
+---
+# ServiceAccount for alertmanager-discord
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alertmanager-discord-sa
+  namespace: monitoring
+  labels:
+    app: alertmanager-discord
+
+---
+# Role for alertmanager-discord
+# Only needs to read the Discord webhook secret
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alertmanager-discord-role
+  namespace: monitoring
+rules:
+# Allow reading Discord webhook URL
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames:
+    - "discord-alerts"
+  verbs: ["get"]
+
+---
+# RoleBinding for alertmanager-discord
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alertmanager-discord-binding
+  namespace: monitoring
+subjects:
+- kind: ServiceAccount
+  name: alertmanager-discord-sa
+  namespace: monitoring
+roleRef:
+  kind: Role
+  name: alertmanager-discord-role
+  apiGroup: rbac.authorization.k8s.io

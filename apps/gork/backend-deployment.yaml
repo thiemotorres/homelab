@@ -17,6 +17,7 @@ spec:
       labels:
         app: gork-backend
     spec:
+      serviceAccountName: gork-backend-sa
       containers:
       - name: gork-backend
         image: thiemotorres/gork-backend:1.0.0

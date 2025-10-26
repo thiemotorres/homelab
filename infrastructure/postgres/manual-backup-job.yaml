@@ -6,7 +6,8 @@ metadata:
 spec:
   template:
     spec:
-      restartPolicy: OnFailure          
+      serviceAccountName: postgres-backup-sa
+      restartPolicy: OnFailure
       initContainers:
       - name: postgres-dump
         image: postgres:17-alpine

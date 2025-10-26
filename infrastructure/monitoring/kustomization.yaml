@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: monitoring
 resources:
   - namespace.yaml
+  - rbac.yaml
   - alertmanager-discord.yaml
   - grafana-ingress.yaml
   - certificate.yaml

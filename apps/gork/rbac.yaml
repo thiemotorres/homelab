@@ -1,0 +1,91 @@
+# RBAC Configuration for Gork Application
+# This file defines ServiceAccounts, Roles, and RoleBindings for the gork namespace
+# Following principle of least privilege - only granting necessary permissions
+
+---
+# ServiceAccount for gork-backend
+# Backend needs to read database credentials and JWT secret
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gork-backend-sa
+  namespace: gork
+  labels:
+    app.kubernetes.io/name: gork-backend
+    app.kubernetes.io/part-of: gork-app
+
+---
+# ServiceAccount for gork-frontend
+# Frontend is a static site, needs minimal permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gork-frontend-sa
+  namespace: gork
+  labels:
+    app.kubernetes.io/name: gork-frontend
+    app.kubernetes.io/part-of: gork-app
+
+---
+# Role for gork-backend
+# Allows reading only the specific secrets it needs
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gork-backend-role
+  namespace: gork
+rules:
+# Allow reading specific secrets only
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames:
+    - "postgres-credentials"    # Database username/password
+    - "database-url"            # Connection string
+    - "gork-jwt-secret"         # JWT signing key
+  verbs: ["get"]
+
+---
+# Role for gork-frontend
+# Static frontend needs no Kubernetes permissions
+# This role is intentionally empty to explicitly deny access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gork-frontend-role
+  namespace: gork
+rules: []
+# No rules = no permissions (explicit deny-all)
+
+---
+# RoleBinding for gork-backend
+# Connects the backend ServiceAccount to its Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gork-backend-binding
+  namespace: gork
+subjects:
+- kind: ServiceAccount
+  name: gork-backend-sa
+  namespace: gork
+roleRef:
+  kind: Role
+  name: gork-backend-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# RoleBinding for gork-frontend
+# Connects the frontend ServiceAccount to its (empty) Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gork-frontend-binding
+  namespace: gork
+subjects:
+- kind: ServiceAccount
+  name: gork-frontend-sa
+  namespace: gork
+roleRef:
+  kind: Role
+  name: gork-frontend-role
+  apiGroup: rbac.authorization.k8s.io

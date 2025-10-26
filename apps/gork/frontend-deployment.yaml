@@ -17,6 +17,7 @@ spec:
       labels:
         app: gork-frontend
     spec:
+      serviceAccountName: gork-frontend-sa
       containers:
       - name: gork-frontend
         image: thiemotorres/gork-frontend:1.0.2

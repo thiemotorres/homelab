@@ -4,6 +4,7 @@ namespace: n8n
 
 resources:
   - namespace.yaml
+  - rbac.yaml
   - pvc.yaml
   - n8n-deployment.yaml
   - service.yaml
