@@ -17,7 +17,10 @@ spec:
     spec:
       containers:
       - name: alertmanager-discord
+        # Note: This image has no versioned releases. Using latest (commit: 89ef841)
+        # See: https://github.com/benjojo/alertmanager-discord
         image: benjojo/alertmanager-discord:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 9094
           name: http

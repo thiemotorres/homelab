@@ -20,6 +20,7 @@ spec:
       containers:
       - name: gork-backend
         image: thiemotorres/gork-backend:1.0.0
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
           name: http

@@ -10,6 +10,7 @@ spec:
       containers:
       - name: restore
         image: rclone/rclone:1.68
+        imagePullPolicy: IfNotPresent
         command:
         - /bin/sh
         args:

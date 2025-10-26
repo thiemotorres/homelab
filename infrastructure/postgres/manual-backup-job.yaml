@@ -10,6 +10,7 @@ spec:
       initContainers:
       - name: postgres-dump
         image: postgres:17-alpine
+        imagePullPolicy: IfNotPresent
         command:
         - /bin/sh
         args:
@@ -55,6 +56,7 @@ spec:
       containers:
       - name: upload-to-r2
         image: rclone/rclone:1.68
+        imagePullPolicy: IfNotPresent
         command:
         - /bin/sh
         args:
