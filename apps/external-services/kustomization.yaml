@@ -6,3 +6,6 @@ resources:
   - router-service.yaml
   - router-certificate.yaml
   - router-ingressroute.yaml
+  - homeassistant-service.yaml
+  - homeassistant-certificate.yaml
+  - homeassistant-ingressroute.yaml

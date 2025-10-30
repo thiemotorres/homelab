@@ -1,0 +1,31 @@
+---
+# Router Service (ClusterIP with Endpoints for external IP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: homeassistant-service
+  namespace: external-services
+  labels:
+    app: homeassistant
+    app.kubernetes.io/name: homeassistant
+    app.kubernetes.io/part-of: homelab-external
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8123     # homeassistant's HTTP port (homeassistant serves plain HTTP on 8123)
+    targetPort: 8123
+    protocol: TCP
+    name: http
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: homeassistant-service
+  namespace: external-services
+subsets:
+- addresses:
+  - ip: 192.168.92.20  # Your homeassistant IP
+  ports:
+  - port: 8123     # homeassistant's actual HTTP port
+    name: http
+    protocol: TCP
