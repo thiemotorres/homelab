@@ -34,14 +34,3 @@ spec:
     customResponseHeaders:
       X-Frame-Options: "SAMEORIGIN"
       X-Content-Type-Options: "nosniff"
----
-# Middleware for HTTPS redirect
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: redirect-to-https
-  namespace: external-services
-spec:
-  redirectScheme:
-    scheme: https
-    permanent: true
