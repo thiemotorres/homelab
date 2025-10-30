@@ -1,5 +1,5 @@
 ---
-# Router Service (ClusterIP with Endpoints for external IP)
+# Home Assistant Service (ClusterIP with Endpoints for external IP)
 apiVersion: v1
 kind: Service
 metadata:
