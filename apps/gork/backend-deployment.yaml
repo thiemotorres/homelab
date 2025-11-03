@@ -20,7 +20,7 @@ spec:
       serviceAccountName: gork-backend-sa
       containers:
       - name: gork-backend
-        image: thiemotorres/gork-backend:1.0.3
+        image: thiemotorres/gork-backend:1.0.4
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
