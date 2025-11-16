@@ -12,6 +12,7 @@ secrets/*.key
 # Unsealed secrets (anywhere in repo)
 *-secret.yaml
 !*-sealed.yaml  # Sealed secrets are OK
+!sealed-secret.yaml
 
 # Kubeseal private key
 sealed-secrets-key.yaml
