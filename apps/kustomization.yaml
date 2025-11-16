@@ -5,3 +5,4 @@ resources:
   - gork         # gork.thiemo.click
   - n8n          # n8n.thiemo.click
   - external-services  # External LAN services
+  - navidrome    # navidrome.feto.dev

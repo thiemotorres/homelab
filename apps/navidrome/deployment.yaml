@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: navidrome
+  namespace: navidrome
+  labels:
+    app: navidrome
+    app.kubernetes.io/name: navidrome
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: navidrome
+  template:
+    metadata:
+      labels:
+        app: navidrome
+    spec:
+      containers:
+      - name: navidrome
+        image: deluan/navidrome:0.52.5
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ND_MUSICFOLDER
+          value: /music
+        - name: ND_DATAFOLDER
+          value: /data
+        - name: ND_LOGLEVEL
+          value: info
+        - name: ND_BASEURL
+          value: https://navidrome.feto.dev
+        - name: ND_ENABLETRANSCODINGCONFIG
+          value: "true"
+        ports:
+        - name: http
+          containerPort: 4533
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        volumeMounts:
+        - name: music-storage
+          mountPath: /music
+          subPath: music
+        - name: music-storage
+          mountPath: /data
+          subPath: data
+      volumes:
+      - name: music-storage
+        persistentVolumeClaim:
+          claimName: navidrome-pvc

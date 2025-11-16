@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: navidrome
+  namespace: navidrome
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`navidrome.feto.dev`)
+      kind: Rule
+      services:
+        - name: navidrome-service
+          port: 4533
+  tls:
+    secretName: navidrome-tls
