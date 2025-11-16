@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: filebrowser
+  namespace: filebrowser
+  labels:
+    app: filebrowser
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: filebrowser
+  template:
+    metadata:
+      labels:
+        app: filebrowser
+    spec:
+      containers:
+      - name: filebrowser
+        image: filebrowser/filebrowser:v2.31.2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        env:
+        - name: FB_NOAUTH
+          value: "false"
+        - name: FB_BASEURL
+          value: ""
+        volumeMounts:
+        # Config and database
+        - name: config
+          mountPath: /config
+        - name: database
+          mountPath: /database
+        # Hetzner Storage Box mounts
+        - name: music
+          mountPath: /srv/music
+        - name: backups
+          mountPath: /srv/backups
+        - name: n8n-data
+          mountPath: /srv/n8n-data
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          fsGroup: 1000
+      volumes:
+      - name: config
+        emptyDir: {}
+      - name: database
+        persistentVolumeClaim:
+          claimName: filebrowser-config
+      # Mount all Hetzner Storage Box PVCs
+      - name: music
+        persistentVolumeClaim:
+          claimName: hetzner-music-pvc
+      - name: backups
+        persistentVolumeClaim:
+          claimName: hetzner-backup-pvc
+      - name: n8n-data
+        persistentVolumeClaim:
+          claimName: hetzner-n8n-pvc
