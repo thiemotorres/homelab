@@ -1,0 +1,125 @@
+# FileBrowser-specific PVs that share the same Hetzner Storage Box paths
+# but are accessible in the filebrowser namespace
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hetzner-music-pv-filebrowser
+spec:
+  capacity:
+    storage: 500Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: hetzner-cifs
+  mountOptions:
+    - dir_mode=0777
+    - file_mode=0777
+    - uid=1000
+    - gid=1000
+    - nobrl
+  csi:
+    driver: smb.csi.k8s.io
+    readOnly: false
+    volumeHandle: hetzner-music-volume-filebrowser
+    volumeAttributes:
+      source: //u508950.your-storagebox.de/backup/music
+    nodeStageSecretRef:
+      name: hetzner-storagebox-creds
+      namespace: storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hetzner-music-pvc
+  namespace: filebrowser
+spec:
+  storageClassName: hetzner-cifs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 500Gi
+  volumeName: hetzner-music-pv-filebrowser
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hetzner-backup-pv-filebrowser
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: hetzner-cifs
+  mountOptions:
+    - dir_mode=0777
+    - file_mode=0777
+    - uid=1000
+    - gid=1000
+    - nobrl
+  csi:
+    driver: smb.csi.k8s.io
+    readOnly: false
+    volumeHandle: hetzner-backup-volume-filebrowser
+    volumeAttributes:
+      source: //u508950.your-storagebox.de/backup/backups
+    nodeStageSecretRef:
+      name: hetzner-storagebox-creds
+      namespace: storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hetzner-backup-pvc
+  namespace: filebrowser
+spec:
+  storageClassName: hetzner-cifs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  volumeName: hetzner-backup-pv-filebrowser
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hetzner-n8n-pv-filebrowser
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: hetzner-cifs
+  mountOptions:
+    - dir_mode=0777
+    - file_mode=0777
+    - uid=1000
+    - gid=1000
+    - nobrl
+  csi:
+    driver: smb.csi.k8s.io
+    readOnly: false
+    volumeHandle: hetzner-n8n-volume-filebrowser
+    volumeAttributes:
+      source: //u508950.your-storagebox.de/backup/n8n-data
+    nodeStageSecretRef:
+      name: hetzner-storagebox-creds
+      namespace: storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hetzner-n8n-pvc
+  namespace: filebrowser
+spec:
+  storageClassName: hetzner-cifs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+  volumeName: hetzner-n8n-pv-filebrowser

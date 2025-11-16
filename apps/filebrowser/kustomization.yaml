@@ -5,6 +5,7 @@ namespace: filebrowser
 
 resources:
   - namespace.yaml
+  - storage-pvcs.yaml
   - pvc.yaml
   - deployment.yaml
   - service.yaml
