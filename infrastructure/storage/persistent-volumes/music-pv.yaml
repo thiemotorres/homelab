@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hetzner-music-pv
+spec:
+  capacity:
+    storage: 500Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: hetzner-cifs
+  mountOptions:
+    - dir_mode=0777
+    - file_mode=0777
+    - uid=1000
+    - gid=1000
+    - nobrl
+  csi:
+    driver: smb.csi.k8s.io
+    readOnly: false
+    volumeHandle: hetzner-music-volume
+    volumeAttributes:
+      source: //u508950.your-storagebox.de/backup/music
+    nodeStageSecretRef:
+      name: hetzner-storagebox-creds
+      namespace: storage

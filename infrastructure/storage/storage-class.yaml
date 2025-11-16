@@ -1,0 +1,17 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: hetzner-cifs
+provisioner: smb.csi.k8s.io
+parameters:
+  source: //u508950.your-storagebox.de/backup
+  csi.storage.k8s.io/provisioner-secret-name: hetzner-storagebox-creds
+  csi.storage.k8s.io/provisioner-secret-namespace: storage
+  csi.storage.k8s.io/node-stage-secret-name: hetzner-storagebox-creds
+  csi.storage.k8s.io/node-stage-secret-namespace: storage
+mountOptions:
+  - dir_mode=0777
+  - file_mode=0777
+  - nobrl
+reclaimPolicy: Retain
+volumeBindingMode: Immediate

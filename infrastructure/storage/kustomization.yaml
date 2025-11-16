@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: storage
+
+resources:
+  - namespace.yaml
+  - smb-csi-driver
+  - sealed-secret.yaml
+  - storage-class.yaml
+  - persistent-volumes/music-pv.yaml
+  - persistent-volumes/backup-pv.yaml
+  - persistent-volumes/n8n-pv.yaml
+  - persistent-volumes/music-pvc.yaml
+  - persistent-volumes/backup-pvc.yaml
+  - persistent-volumes/n8n-pvc.yaml

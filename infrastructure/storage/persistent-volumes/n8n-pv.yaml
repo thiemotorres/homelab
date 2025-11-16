@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hetzner-n8n-pv
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: hetzner-cifs
+  mountOptions:
+    - dir_mode=0777
+    - file_mode=0777
+    - uid=1000
+    - gid=1000
+    - nobrl
+  csi:
+    driver: smb.csi.k8s.io
+    readOnly: false
+    volumeHandle: hetzner-n8n-volume
+    volumeAttributes:
+      source: //u508950.your-storagebox.de/backup/n8n-data
+    nodeStageSecretRef:
+      name: hetzner-storagebox-creds
+      namespace: storage

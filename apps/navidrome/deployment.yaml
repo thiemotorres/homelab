@@ -63,11 +63,12 @@ spec:
         volumeMounts:
         - name: music-storage
           mountPath: /music
-          subPath: music
-        - name: music-storage
+        - name: data-storage
           mountPath: /data
-          subPath: data
       volumes:
       - name: music-storage
+        persistentVolumeClaim:
+          claimName: hetzner-music-pvc
+      - name: data-storage
         persistentVolumeClaim:
           claimName: navidrome-pvc

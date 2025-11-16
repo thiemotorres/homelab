@@ -60,7 +60,8 @@ spec:
             - name: backup-storage
               mountPath: /backup
           
-          # 2. Main Container: Upload zu R2 mit rclone
+          # 2. Container: Upload zu R2 mit rclone
+          # 3. Container: Copy to Hetzner Storage Box
           containers:
           - name: upload-to-r2
             image: rclone/rclone:1.68
@@ -169,7 +170,46 @@ spec:
             volumeMounts:
             - name: backup-storage
               mountPath: /backup
-          
+
+          - name: copy-to-hetzner
+            image: alpine:latest
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            args:
+            - -c
+            - |
+              set -e
+
+              echo "Copying backup to Hetzner Storage Box..."
+
+              # Backup-Filename lesen
+              BACKUP_FILE=$(cat /backup/latest_filename.txt)
+              echo "Copying $BACKUP_FILE to Hetzner Storage Box..."
+
+              # Copy to Hetzner mount
+              cp /backup/$BACKUP_FILE /hetzner-backup/
+
+              echo "Backup copied to Hetzner Storage Box successfully!"
+
+              # Alte Backups auf Hetzner löschen (älter als 7 Tage)
+              echo "Cleaning up old backups on Hetzner Storage Box..."
+              find /hetzner-backup -name "postgres_backup_*.sql.gz" -type f -mtime +7 -delete
+
+              # Liste aller Backups auf Hetzner anzeigen
+              echo "Current backups on Hetzner Storage Box:"
+              ls -lh /hetzner-backup/postgres_backup_*.sql.gz || echo "No backups found"
+
+              echo "Hetzner backup job completed successfully!"
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backup
+            - name: hetzner-backup
+              mountPath: /hetzner-backup
+
           volumes:
           - name: backup-storage
             emptyDir: {}
+          - name: hetzner-backup
+            persistentVolumeClaim:
+              claimName: hetzner-backup-pvc
