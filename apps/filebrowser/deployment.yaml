@@ -40,6 +40,10 @@ spec:
           value: "false"
         - name: FB_BASEURL
           value: ""
+        - name: FB_DATABASE
+          value: "/database/filebrowser.db"
+        - name: FB_ROOT
+          value: "/srv"
         volumeMounts:
         # Config and database
         - name: config
