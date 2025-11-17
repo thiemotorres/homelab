@@ -11,3 +11,4 @@ resources:
   - certificate.yaml
   - ingressroute.yaml
   - sealed-secrets/postgres-credentials-sealed.yaml
+  - sealed-secrets/n8n-encryption-key-sealed.yaml
