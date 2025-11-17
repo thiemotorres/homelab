@@ -92,6 +92,8 @@ spec:
           value: "true"
         - name: N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS
           value: "true"
+        - name: N8N_PROXY_HOPS
+          value: "1"
         volumeMounts:
         - name: n8n-data
           mountPath: /home/node/.n8n
