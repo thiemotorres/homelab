@@ -9,3 +9,6 @@ resources:
   - homeassistant-service.yaml
   - homeassistant-certificate.yaml
   - homeassistant-ingressroute.yaml
+  - ttyd-service.yaml
+  - ttyd-certificate.yaml
+  - ttyd-ingressroute.yaml
