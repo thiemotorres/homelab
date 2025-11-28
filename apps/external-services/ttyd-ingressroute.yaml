@@ -1,0 +1,36 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ttyd
+  namespace: external-services
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`ttyd.feto.dev`)
+      kind: Rule
+      services:
+        - name: ttyd-service
+          port: 8888
+          scheme: http  # ttyd speaks plain HTTP on port 8888
+      middlewares:
+        - name: ttyd-headers
+          namespace: external-services
+  tls:
+    secretName: ttyd-tls
+---
+# Middleware for setting proper headers
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: ttyd-headers
+  namespace: external-services
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+      X-Forwarded-For: ""
+    customResponseHeaders:
+      X-Frame-Options: "SAMEORIGIN"
+      X-Content-Type-Options: "nosniff"
