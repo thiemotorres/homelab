@@ -47,3 +47,6 @@ kubeconfig
 
 # ArgoCD initial admin password
 argocd-initial-admin-secret.yaml
+
+# Git worktrees
+.worktrees/
