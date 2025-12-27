@@ -1,0 +1,17 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: tandoor
+  namespace: tandoor
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`rezepte.thiemo.click`)
+      kind: Rule
+      services:
+        - name: tandoor-service
+          port: 8080
+  tls:
+    secretName: tandoor-tls
