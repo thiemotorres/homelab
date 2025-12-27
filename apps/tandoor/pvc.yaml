@@ -9,7 +9,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: hetzner-smb
+  storageClassName: hetzner-cifs
   resources:
     requests:
       storage: 10Gi
