@@ -7,3 +7,4 @@ resources:
   - external-services  # External LAN services
   - navidrome    # navidrome.feto.dev
   - filebrowser  # files.feto.dev
+  - tandoor      # rezepte.thiemo.click
