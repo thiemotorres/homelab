@@ -56,7 +56,7 @@ spec:
         emptyDir: {}
       containers:
       - name: tandoor
-        image: vabene1111/recipes:1.5.28
+        image: vabene1111/recipes:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
