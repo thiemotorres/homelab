@@ -30,9 +30,8 @@ spec:
         - name: tandoor-media
           mountPath: /opt/recipes/mediafiles
           subPath: mediafiles
-        - name: tandoor-media
+        - name: tandoor-static
           mountPath: /opt/recipes/staticfiles
-          subPath: staticfiles
       - name: wait-for-postgres
         image: postgres:17-alpine
         imagePullPolicy: IfNotPresent
@@ -53,6 +52,8 @@ spec:
       - name: tandoor-media
         persistentVolumeClaim:
           claimName: hetzner-tandoor-pvc
+      - name: tandoor-static
+        emptyDir: {}
       containers:
       - name: tandoor
         image: vabene1111/recipes:1.5.28
@@ -114,9 +115,8 @@ spec:
         - name: tandoor-media
           mountPath: /opt/recipes/mediafiles
           subPath: mediafiles
-        - name: tandoor-media
+        - name: tandoor-static
           mountPath: /opt/recipes/staticfiles
-          subPath: staticfiles
         livenessProbe:
           httpGet:
             path: /
