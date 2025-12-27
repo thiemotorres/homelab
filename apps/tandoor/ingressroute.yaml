@@ -12,6 +12,6 @@ spec:
       kind: Rule
       services:
         - name: tandoor-service
-          port: 8080
+          port: 80
   tls:
     secretName: tandoor-tls
