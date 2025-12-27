@@ -1,0 +1,36 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tandoor-sa
+  namespace: tandoor
+  labels:
+    app.kubernetes.io/name: tandoor
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tandoor-role
+  namespace: tandoor
+  labels:
+    app.kubernetes.io/name: tandoor
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tandoor-rolebinding
+  namespace: tandoor
+  labels:
+    app.kubernetes.io/name: tandoor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tandoor-role
+subjects:
+  - kind: ServiceAccount
+    name: tandoor-sa
+    namespace: tandoor
