@@ -1,0 +1,144 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tandoor
+  namespace: tandoor
+  labels:
+    app: tandoor
+    app.kubernetes.io/name: tandoor
+    app.kubernetes.io/part-of: tandoor-app
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: tandoor
+  template:
+    metadata:
+      labels:
+        app: tandoor
+    spec:
+      serviceAccountName: tandoor-sa
+      initContainers:
+      - name: volume-permissions
+        image: busybox:1.36
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "chown -R 65534:65534 /opt/recipes/mediafiles /opt/recipes/staticfiles"]
+        volumeMounts:
+        - name: tandoor-media
+          mountPath: /opt/recipes/mediafiles
+          subPath: mediafiles
+        - name: tandoor-media
+          mountPath: /opt/recipes/staticfiles
+          subPath: staticfiles
+      - name: wait-for-postgres
+        image: postgres:17-alpine
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c']
+        args:
+        - |
+          until pg_isready -h postgres-service.infrastructure.svc.cluster.local -p 5432 -U $POSTGRES_USER; do
+            echo "Waiting for PostgreSQL to be ready..."
+            sleep 2
+          done
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+      volumes:
+      - name: tandoor-media
+        persistentVolumeClaim:
+          claimName: hetzner-tandoor-pvc
+      containers:
+      - name: tandoor
+        image: vabene1111/recipes:1.5.28
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: tandoor-secret-key
+              key: secret-key
+        - name: DB_ENGINE
+          value: "django.db.backends.postgresql"
+        - name: POSTGRES_HOST
+          value: "postgres-service.infrastructure.svc.cluster.local"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "tandoor"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: TIMEZONE
+          value: "Europe/Berlin"
+        - name: TZ
+          value: "Europe/Berlin"
+        - name: GUNICORN_MEDIA
+          value: "0"
+        - name: REVERSE_PROXY_AUTH
+          value: "0"
+        - name: ENABLE_SIGNUP
+          value: "0"
+        - name: ALLOWED_HOSTS
+          value: "*"
+        - name: CSRF_TRUSTED_ORIGINS
+          value: "https://rezepte.thiemo.click"
+        - name: DEBUG
+          value: "0"
+        - name: SQL_DEBUG
+          value: "0"
+        - name: ENABLE_PDF_EXPORT
+          value: "1"
+        - name: FRACTION_PREF_DEFAULT
+          value: "0"
+        - name: COMMENT_PREF_DEFAULT
+          value: "1"
+        - name: SHOPPING_MIN_AUTOSYNC_INTERVAL
+          value: "5"
+        volumeMounts:
+        - name: tandoor-media
+          mountPath: /opt/recipes/mediafiles
+          subPath: mediafiles
+        - name: tandoor-media
+          mountPath: /opt/recipes/staticfiles
+          subPath: staticfiles
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
