@@ -20,7 +20,7 @@ spec:
       serviceAccountName: gork-frontend-sa
       containers:
       - name: gork-frontend
-        image: thiemotorres/gork-frontend:1.0.3
+        image: thiemotorres/gork-frontend:1.0.4
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
