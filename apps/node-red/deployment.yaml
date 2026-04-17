@@ -29,7 +29,7 @@ spec:
           runAsUser: 0
       containers:
       - name: node-red
-        image: nodered/node-red:4
+        image: nodered/node-red:4.1.8
         imagePullPolicy: IfNotPresent
         ports:
         - name: http
