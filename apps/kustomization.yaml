@@ -8,3 +8,4 @@ resources:
   - navidrome    # navidrome.feto.dev
   - filebrowser  # files.feto.dev
   - tandoor      # rezepte.thiemo.click
+  - node-red     # nodered.feto.dev

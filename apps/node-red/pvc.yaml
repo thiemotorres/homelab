@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: node-red-data
+  namespace: node-red
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: hetzner-cifs
+  resources:
+    requests:
+      storage: 5Gi
