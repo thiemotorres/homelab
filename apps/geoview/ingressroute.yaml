@@ -1,0 +1,17 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: geoview
+  namespace: geoview
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`geoview.thiemo.click`)
+      kind: Rule
+      services:
+        - name: geoview
+          port: 80
+  tls:
+    secretName: geoview-tls

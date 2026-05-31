@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: geoview
+  labels:
+    app.kubernetes.io/name: geoview
+    app.kubernetes.io/part-of: geoview-app

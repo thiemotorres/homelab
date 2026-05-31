@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geoview
+  namespace: geoview
+  labels:
+    app: geoview
+    app.kubernetes.io/name: geoview
+    app.kubernetes.io/part-of: geoview-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: geoview
+  template:
+    metadata:
+      labels:
+        app: geoview
+    spec:
+      containers:
+      - name: geoview
+        image: thiemotorres/geoview:latest
+        # 'latest' tag => pull on every (re)start so new pushes are picked up
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
