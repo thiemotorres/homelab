@@ -17,9 +17,11 @@ spec:
       labels:
         app: geoview
     spec:
+      imagePullSecrets:
+      - name: ghcr-pull-secret
       containers:
       - name: geoview
-        image: thiemotorres/geoview:latest
+        image: ghcr.io/thiemotorres/geoview:latest
         # 'latest' tag => pull on every (re)start so new pushes are picked up
         imagePullPolicy: Always
         ports:

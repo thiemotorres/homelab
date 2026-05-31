@@ -9,3 +9,4 @@ resources:
   - service.yaml
   - certificate.yaml
   - ingressroute.yaml
+  - sealed-secrets/ghcr-pull-secret-sealed.yaml
