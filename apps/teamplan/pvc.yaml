@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teamplan-pvc
+  namespace: teamplan
+  labels:
+    app.kubernetes.io/name: teamplan
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi # SQLite-Datei, Teamdaten bleiben klein

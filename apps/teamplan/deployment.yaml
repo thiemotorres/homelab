@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teamplan
+  namespace: teamplan
+  labels:
+    app: teamplan
+    app.kubernetes.io/name: teamplan
+spec:
+  # SQLite auf RWO-Volume => genau eine Replica, Recreate statt RollingUpdate
+  # (zwei Pods gleichzeitig wuerden sich die DB-Datei streitig machen)
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: teamplan
+  template:
+    metadata:
+      labels:
+        app: teamplan
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      securityContext:
+        # Das Image laeuft als Non-Root-User 'app' (APP_UID=1654, .NET-Standard).
+        # fsGroup sorgt dafuer, dass das gemountete PVC fuer ihn beschreibbar ist.
+        fsGroup: 1654
+      containers:
+        - name: teamplan
+          image: ghcr.io/thiemotorres/teamplan:latest
+          # 'latest' tag => pull on every (re)start so new pushes are picked up
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            # Im Image bereits gesetzt, hier explizit fuer Sichtbarkeit
+            - name: ConnectionStrings__Default
+              value: "Data Source=/data/teamplan.db"
+            # Traefik terminiert TLS => X-Forwarded-Proto respektieren,
+            # damit das Auth-Cookie das Secure-Flag bekommt
+            - name: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+              value: "true"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: / # SPA-Shell aus wwwroot, billig
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              # anonymer Endpoint, der die DB beruehrt => echter Readiness-Check
+              path: /api/auth/setup-required
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: teamplan-pvc

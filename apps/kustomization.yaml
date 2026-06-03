@@ -10,3 +10,4 @@ resources:
   - filebrowser  # files.feto.dev
   - tandoor      # rezepte.thiemo.click
   - node-red     # nodered.feto.dev
+  - teamplan     # teamplan.thiemo.click

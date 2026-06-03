@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: teamplan
+  labels:
+    app.kubernetes.io/name: teamplan
