@@ -1,0 +1,17 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kw
+  namespace: kw
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`kw.thiemo.click`)
+      kind: Rule
+      services:
+        - name: kw
+          port: 80
+  tls:
+    secretName: kw-tls

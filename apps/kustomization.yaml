@@ -10,3 +10,4 @@ resources:
   - filebrowser  # files.feto.dev
   - node-red     # nodered.feto.dev
   - teamplan     # teamplan.thiemo.click
+  - kw           # kw.thiemo.click

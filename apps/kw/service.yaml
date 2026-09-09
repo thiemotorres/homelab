@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kw
+  namespace: kw
+  labels:
+    app: kw
+    app.kubernetes.io/name: kw
+    app.kubernetes.io/part-of: kw-app
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: kw

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kw
+  labels:
+    app.kubernetes.io/name: kw
+    app.kubernetes.io/part-of: kw-app
