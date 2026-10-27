@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
     chart: kube-prometheus-stack
-    targetRevision: 65.7.0
+    targetRevision: 92.14.0
     helm:
       valuesObject:
         # Default Rules
@@ -110,9 +110,6 @@ spec:
                 editable: true
                 options:
                   path: /var/lib/grafana/dashboards/default
-          plugins:
-            - grafana-piechart-panel
-            - grafana-worldmap-panel
           env:
             GF_SERVER_ROOT_URL: https://grafana.feto.dev
             GF_SERVER_DOMAIN: grafana.feto.dev
