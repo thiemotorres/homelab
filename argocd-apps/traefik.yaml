@@ -11,7 +11,7 @@ spec:
   source:
     chart: traefik
     repoURL: https://traefik.github.io/charts
-    targetRevision: 37.2.0
+    targetRevision: 42.1.3
     helm:
       releaseName: traefik
       values: |
@@ -22,18 +22,18 @@ spec:
           websecure:
             port: 443
             exposedPort: 443
-            tls:
-              enabled: true
+            http:
+              tls:
+                enabled: true
 
         ingressRoute:
           dashboard:
             enabled: false  # Auf true setzen für Traefik Dashboard
 
-        logs:
-          general:
-            level: INFO
-          access:
-            enabled: true
+        log:
+          level: INFO
+        accessLog:
+          enabled: true
 
         additionalArguments:
           - "--api.dashboard=true"

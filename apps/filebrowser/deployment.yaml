@@ -29,7 +29,7 @@ spec:
           runAsUser: 0
       containers:
       - name: filebrowser
-        image: filebrowser/filebrowser:v2.31.2
+        image: filebrowser/filebrowser:v2.63.23
         imagePullPolicy: IfNotPresent
         ports:
         - name: http

@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: navidrome
-        image: deluan/navidrome:0.52.5
+        image: deluan/navidrome:0.64.2
         imagePullPolicy: IfNotPresent
         env:
         - name: ND_MUSICFOLDER

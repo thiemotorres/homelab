@@ -64,7 +64,7 @@ spec:
           # 3. Container: Copy to Hetzner Storage Box
           containers:
           - name: upload-to-r2
-            image: rclone/rclone:1.68
+            image: rclone/rclone:1.75.2
             imagePullPolicy: IfNotPresent
             command:
             - /bin/sh

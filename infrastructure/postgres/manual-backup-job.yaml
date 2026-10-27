@@ -56,7 +56,7 @@ spec:
       # 2. Main Container: Upload zu R2 mit rclone
       containers:
       - name: upload-to-r2
-        image: rclone/rclone:1.68
+        image: rclone/rclone:1.75.2
         imagePullPolicy: IfNotPresent
         command:
         - /bin/sh
